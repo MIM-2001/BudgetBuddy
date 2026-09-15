@@ -1,35 +1,22 @@
 :root {
-  --ink: #241A2E;
-  --plum: #2B1B3D;
-  --plum-deep: #1E1129;
-  --paper: #F2F0FA;
-  --paper-dim: #E4E0F2;
-  --lime: #E8FF6B;
-  --coral: #FF5A73;
+  --ink: #1E2A38;
+  --ink-soft: #5B6B7D;
+  --bg: #FFFFFF;
+  --surface: #F5F9FC;
+  --surface-dim: #E8F0F7;
+  --line: rgba(30, 42, 56, 0.14);
+  --line-strong: rgba(30, 42, 56, 0.28);
+  --blue: #1173B5;
+  --blue-deep: #0B5A96;
   --sky: #8FD3FF;
-  --line: rgba(36, 26, 46, 0.16);
-  --line-on-dark: rgba(242, 240, 250, 0.22);
+  --warn: #E0A62A;
+  --danger: #FF5A73;
   --radius: 14px;
-  --shadow: 0 2px 0 rgba(36,26,46,0.9);
-}
-[data-theme="dark"] {
-  --ink: #F2F0FA;
-  --paper: #201530;
-  --paper-dim: #2A1D3C;
-  --line: rgba(242,240,250,0.16);
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --ink: #F2F0FA;
-    --paper: #201530;
-    --paper-dim: #2A1D3C;
-    --line: rgba(242,240,250,0.16);
-  }
 }
 * { box-sizing: border-box; }
 body {
   margin: 0;
-  background: var(--plum);
+  background: var(--bg);
   color: var(--ink);
   font-family: 'IBM Plex Sans', sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -42,7 +29,7 @@ body {
 /* ---------- Header ---------- */
 header.top {
   padding: 28px 20px 40px;
-  color: var(--paper);
+  color: var(--ink);
 }
 .wordmark {
   font-family: 'Fraunces', serif;
@@ -53,30 +40,31 @@ header.top {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  color: var(--blue-deep);
 }
 .wordmark::before { content: "🧾"; font-style: normal; font-size: 22px; }
 .tagline {
   margin-top: 6px;
   font-size: 14px;
-  color: var(--paper-dim, #cfc8e6);
-  opacity: 0.75;
+  color: var(--ink-soft);
   max-width: 40ch;
 }
 
 /* ---------- Hero ---------- */
 .hero {
-  background: var(--plum-deep);
+  background: var(--blue);
   border-radius: 20px;
   padding: 32px 28px;
-  color: var(--paper);
+  color: #fff;
   position: relative;
   overflow: hidden;
-  border: 1px solid var(--line-on-dark);
+  border: 1px solid var(--blue-deep);
 }
 .hero-label {
   font-size: 13px;
-  color: var(--lime);
+  color: #D8EFFF;
   font-weight: 600;
+  letter-spacing: 0.02em;
 }
 .hero-number {
   font-family: 'Fraunces', serif;
@@ -86,30 +74,30 @@ header.top {
   margin: 8px 0 4px;
   letter-spacing: -0.02em;
 }
-.hero-number.over { color: var(--coral); }
+.hero-number.over { color: var(--danger); }
 .hero-sub {
   font-size: 14px;
-  color: #cfc8e6;
+  color: rgba(255,255,255,0.85);
   display: flex;
   flex-wrap: wrap;
   gap: 6px 18px;
   margin-top: 10px;
 }
-.hero-sub b { color: var(--paper); font-family: 'IBM Plex Mono', monospace; font-weight: 600; }
+.hero-sub b { color: #fff; font-family: 'IBM Plex Mono', monospace; font-weight: 600; }
 .hero-bar-track {
   margin-top: 20px;
   height: 12px;
   border-radius: 8px;
-  background: rgba(242,240,250,0.14);
+  background: rgba(255,255,255,0.22);
   overflow: hidden;
 }
 .hero-bar-fill {
   height: 100%;
-  background: var(--lime);
+  background: #fff;
   border-radius: 8px;
   transition: width 0.4s ease;
 }
-.hero-bar-fill.over { background: var(--coral); }
+.hero-bar-fill.over { background: var(--danger); }
 
 /* ---------- Section shell ---------- */
 section.block {
@@ -126,14 +114,15 @@ section.block {
   font-family: 'Fraunces', serif;
   font-weight: 600;
   font-size: 21px;
-  color: var(--paper);
+  color: var(--ink);
 }
 .block-hint {
   font-size: 12.5px;
-  color: #b9b0d6;
+  color: var(--ink-soft);
 }
 .panel {
-  background: var(--paper);
+  background: var(--surface);
+  border: 1px solid var(--line);
   border-radius: var(--radius);
   padding: 4px 20px;
 }
@@ -144,7 +133,7 @@ section.block {
   align-items: center;
   gap: 12px;
   padding: 14px 0;
-  border-bottom: 1px dashed var(--line);
+  border-bottom: 1px solid var(--line);
 }
 .row:last-child { border-bottom: none; }
 .row-name { font-weight: 500; font-size: 14.5px; flex-shrink: 0; }
@@ -154,15 +143,15 @@ section.block {
   padding: 3px 8px;
   border-radius: 20px;
   background: var(--sky);
-  color: var(--plum-deep);
+  color: var(--blue-deep);
   white-space: nowrap;
 }
-.row-tag.loan { background: #FFD27A; }
-.row-tag.family { background: #C9F2A8; }
-.row-tag.job { background: var(--lime); }
+.row-tag.loan { background: #F5D9A8; color: #6B4A16; }
+.row-tag.family { background: #BFE3C4; color: #21562D; }
+.row-tag.job { background: var(--surface-dim); color: var(--ink); }
 .row-leader {
   flex: 1;
-  border-bottom: 1px dotted var(--line);
+  border-bottom: 1px dotted var(--line-strong);
   margin-bottom: 5px;
   min-width: 12px;
 }
@@ -182,13 +171,13 @@ section.block {
   padding: 2px 4px;
   line-height: 1;
 }
-.row-del:hover { opacity: 0.9; color: var(--coral); }
-.row-meta { font-size: 11.5px; color: #8b8298; margin-top: 2px; }
+.row-del:hover { opacity: 0.9; color: var(--danger); }
+.row-meta { font-size: 11.5px; color: var(--ink-soft); margin-top: 2px; }
 
 /* ---------- Envelope cards ---------- */
 .envelope {
   padding: 16px 0;
-  border-bottom: 1px dashed var(--line);
+  border-bottom: 1px solid var(--line);
 }
 .envelope:last-child { border-bottom: none; }
 .env-top {
@@ -199,23 +188,23 @@ section.block {
   margin-bottom: 8px;
 }
 .env-name { font-weight: 600; font-size: 14.5px; }
-.env-nums { font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: #6b6178; white-space: nowrap; }
+.env-nums { font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: var(--ink-soft); white-space: nowrap; }
 .env-nums b { color: var(--ink); }
 .env-track {
   height: 10px;
   border-radius: 6px;
-  background: var(--paper-dim);
+  background: var(--surface-dim);
   overflow: hidden;
   border: 1px solid var(--line);
 }
 .env-fill {
   height: 100%;
-  background: var(--ink);
+  background: var(--blue);
   border-radius: 6px;
   transition: width 0.3s ease;
 }
-.env-fill.warn { background: #E0A62A; }
-.env-fill.over { background: var(--coral); }
+.env-fill.warn { background: var(--warn); }
+.env-fill.over { background: var(--danger); }
 .env-actions { margin-top: 8px; display: flex; gap: 8px; }
 
 /* ---------- Forms / buttons ---------- */
@@ -230,57 +219,55 @@ section.block {
   transition: transform 0.08s ease;
 }
 .btn:active { transform: scale(0.97); }
-.btn-lime { background: var(--lime); color: var(--plum-deep); }
-.btn-ghost { background: transparent; color: var(--paper); border: 1px solid var(--line-on-dark); }
-.btn-ghost.dark { color: var(--ink); border: 1px solid var(--line); }
+.btn-primary { background: var(--blue); color: #fff; }
+.btn-ghost { background: transparent; color: var(--blue); border: 1px solid var(--line-strong); }
 .btn-mini { padding: 6px 10px; font-size: 12px; }
 .btn-text {
-  background: none; border: none; color: var(--ink); opacity: 0.55;
+  background: none; border: none; color: var(--blue-deep); opacity: 0.75;
   font-size: 12.5px; font-weight: 600; cursor: pointer; text-decoration: underline;
   text-underline-offset: 3px;
 }
 .btn-text:hover { opacity: 1; }
-.btn-text.on-dark { color: var(--paper); }
 
 .form-card {
-  background: var(--paper);
+  background: var(--surface);
   border-radius: var(--radius);
   padding: 18px 20px;
   margin-top: 12px;
-  border: 1px dashed var(--line);
+  border: 1px solid var(--line);
   display: none;
 }
 .form-card.open { display: block; }
 .field-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
 .field { flex: 1; min-width: 120px; }
-label { display: block; font-size: 11.5px; font-weight: 600; margin-bottom: 4px; opacity: 0.65; }
+label { display: block; font-size: 11.5px; font-weight: 600; margin-bottom: 4px; color: var(--ink-soft); }
 input, select {
   width: 100%;
   font-family: 'IBM Plex Sans', sans-serif;
   font-size: 14px;
   padding: 9px 10px;
   border-radius: 8px;
-  border: 1px solid var(--line);
-  background: var(--paper);
+  border: 1px solid var(--line-strong);
+  background: #fff;
   color: var(--ink);
 }
 input:focus, select:focus, .btn:focus-visible, .btn-text:focus-visible {
-  outline: 2px solid var(--sky);
+  outline: 2px solid var(--blue);
   outline-offset: 1px;
 }
 
 .empty {
   padding: 24px 0;
   font-size: 13.5px;
-  color: #8b8298;
+  color: var(--ink-soft);
 }
 
 footer {
   text-align: center;
-  color: #b9b0d6;
+  color: var(--ink-soft);
   font-size: 12px;
   margin-top: 50px;
-  opacity: 0.7;
+  opacity: 0.85;
 }
 
 @media (max-width: 480px) {
