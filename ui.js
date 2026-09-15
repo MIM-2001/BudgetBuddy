@@ -33,6 +33,40 @@ function money(n) {
 }
 
 /* =========================================================================
+   CHART DATA
+   ========================================================================= */
+const INCOME_TYPE_COLOR_INDEX = { aid: 0, loan: 1, family: 2, job: 3 };
+
+function spendingByCategorySegments() {
+  const state = Store.getState();
+  const segments = [];
+  let otherTotal = 0;
+  state.envelopes.forEach(env => {
+    const value = spentInEnvelope(env.id);
+    if (env.colorIndex < CHART_PALETTE.length) {
+      segments.push({ label: env.name, value, color: paletteColor(env.colorIndex) });
+    } else {
+      otherTotal += value;
+    }
+  });
+  if (otherTotal > 0) segments.push({ label: 'Other', value: otherTotal, color: CHART_OTHER_COLOR });
+  return segments;
+}
+
+function incomeByTypeSegments() {
+  const state = Store.getState();
+  const totals = {};
+  state.income.forEach(inc => {
+    totals[inc.type] = (totals[inc.type] || 0) + monthlyValueOf(inc);
+  });
+  return Object.keys(tagLabel).map(type => ({
+    label: tagLabel[type],
+    value: totals[type] || 0,
+    color: paletteColor(INCOME_TYPE_COLOR_INDEX[type]),
+  }));
+}
+
+/* =========================================================================
    RENDER
    ========================================================================= */
 const tagLabel = { aid: 'Aid', loan: 'Loan', family: 'Family', job: 'Job' };
@@ -55,6 +89,16 @@ function render() {
   const heroBar = document.getElementById('heroBar');
   heroBar.style.width = pct + '%';
   heroBar.classList.toggle('over', spent > monthlyIncome);
+
+  // Charts
+  renderDonut(document.getElementById('categoryChart'), spendingByCategorySegments(), {
+    emptyText: 'Log an expense to see this chart.',
+    formatValue: money,
+  });
+  renderDonut(document.getElementById('incomeChart'), incomeByTypeSegments(), {
+    emptyText: 'Add an income source to see this chart.',
+    formatValue: money,
+  });
 
   // Income list
   const incList = document.getElementById('incomeList');

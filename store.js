@@ -13,11 +13,12 @@ const Store = (() => {
   function _load() {
     try {
       const raw = localStorage.getItem(KEY);
-      if (!raw) return { income: [], envelopes: [], expenses: [] };
-      return JSON.parse(raw);
+      const state = raw ? JSON.parse(raw) : { income: [], envelopes: [], expenses: [] };
+      if (typeof state.envelopeColorSeq !== 'number') state.envelopeColorSeq = state.envelopes.length;
+      return state;
     } catch (e) {
       console.error('BudgetBuddy: failed to load state', e);
-      return { income: [], envelopes: [], expenses: [] };
+      return { income: [], envelopes: [], expenses: [], envelopeColorSeq: 0 };
     }
   }
 
@@ -46,7 +47,10 @@ const Store = (() => {
     },
 
     addEnvelope(item) {
-      state.envelopes.push({ id: crypto.randomUUID(), ...item });
+      // colorIndex is assigned once at creation so a category's chart color
+      // never shifts when other categories are added or removed later.
+      const colorIndex = state.envelopeColorSeq++;
+      state.envelopes.push({ id: crypto.randomUUID(), colorIndex, ...item });
       _save(state);
     },
     removeEnvelope(id) {
