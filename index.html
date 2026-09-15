@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BudgetBuddy — stretch your aid</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <div class="wordmark">BudgetBuddy</div>
+    <div class="tagline">Turn financial aid, loans, and whatever your family can chip in into a number you can actually spend today.</div>
+  </header>
+
+  <div class="hero">
+    <div class="hero-label">SAFE TO SPEND TODAY</div>
+    <div class="hero-number" id="heroNumber">$0</div>
+    <div class="hero-sub">
+      <span><b id="heroRemaining">$0</b> left this month</span>
+      <span><b id="heroDays">0</b> days to go</span>
+    </div>
+    <div class="hero-bar-track"><div class="hero-bar-fill" id="heroBar" style="width:0%"></div></div>
+  </div>
+
+  <!-- INCOME -->
+  <section class="block">
+    <div class="block-head">
+      <div class="block-title">Where your money comes from</div>
+      <button class="btn-text" id="toggleIncomeForm">+ add source</button>
+    </div>
+    <div class="panel">
+      <div id="incomeList"></div>
+      <div class="empty" id="incomeEmpty">No income sources yet — add your financial aid, loan disbursement, or whatever family sends.</div>
+    </div>
+    <div class="form-card" id="incomeForm">
+      <div class="field-row">
+        <div class="field">
+          <label>Source name</label>
+          <input type="text" id="incName" placeholder="e.g. Fall Pell Grant">
+        </div>
+        <div class="field">
+          <label>Type</label>
+          <select id="incType">
+            <option value="aid">Financial aid</option>
+            <option value="loan">Loan</option>
+            <option value="family">Family assistance</option>
+            <option value="job">Job / other</option>
+          </select>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Amount</label>
+          <input type="number" id="incAmount" placeholder="0.00" min="0" step="0.01">
+        </div>
+        <div class="field">
+          <label>Arrives</label>
+          <select id="incFreq">
+            <option value="monthly">Every month</option>
+            <option value="lump">Lump sum — spread it out</option>
+          </select>
+        </div>
+        <div class="field" id="spreadField">
+          <label>Spread over (months)</label>
+          <input type="number" id="incSpread" placeholder="4" min="1" step="1" value="4">
+        </div>
+      </div>
+      <div class="field-row" style="margin-top:2px;">
+        <button class="btn btn-lime" id="saveIncome">Add source</button>
+        <button class="btn btn-ghost dark" id="cancelIncome">Cancel</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ENVELOPES -->
+  <section class="block">
+    <div class="block-head">
+      <div class="block-title">Your budget, split up</div>
+      <button class="btn-text" id="toggleEnvForm">+ add category</button>
+    </div>
+    <div class="panel">
+      <div id="envList"></div>
+      <div class="empty" id="envEmpty">No budget categories yet — split your monthly total into what it actually goes to.</div>
+    </div>
+    <div class="form-card" id="envForm">
+      <div class="field-row">
+        <div class="field">
+          <label>Category name</label>
+          <input type="text" id="envName" placeholder="e.g. Groceries">
+        </div>
+        <div class="field">
+          <label>Monthly budget</label>
+          <input type="number" id="envAmount" placeholder="0.00" min="0" step="0.01">
+        </div>
+      </div>
+      <div class="field-row" style="margin-top:2px;">
+        <button class="btn btn-lime" id="saveEnv">Add category</button>
+        <button class="btn btn-ghost dark" id="cancelEnv">Cancel</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- EXPENSES -->
+  <section class="block">
+    <div class="block-head">
+      <div class="block-title">Recent spending</div>
+      <button class="btn-text" id="toggleExpForm">+ log expense</button>
+    </div>
+    <div class="panel">
+      <div id="expList"></div>
+      <div class="empty" id="expEmpty">Nothing logged yet. Spend something, then log it here.</div>
+    </div>
+    <div class="form-card" id="expForm">
+      <div class="field-row">
+        <div class="field">
+          <label>What was it</label>
+          <input type="text" id="expName" placeholder="e.g. Textbook">
+        </div>
+        <div class="field">
+          <label>Category</label>
+          <select id="expCategory"></select>
+        </div>
+        <div class="field">
+          <label>Amount</label>
+          <input type="number" id="expAmount" placeholder="0.00" min="0" step="0.01">
+        </div>
+      </div>
+      <div class="field-row" style="margin-top:2px;">
+        <button class="btn btn-lime" id="saveExp">Log it</button>
+        <button class="btn btn-ghost dark" id="cancelExp">Cancel</button>
+      </div>
+    </div>
+  </section>
+
+  <footer>Prototype — everything here stays on this device.</footer>
+</div>
+
+<script src="store.js"></script>
+<script src="ui.js"></script>
+</body>
+</html>
