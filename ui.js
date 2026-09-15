@@ -3,6 +3,8 @@
    ========================================================================= */
 function monthlyValueOf(income) {
   if (income.freq === 'monthly') return income.amount;
+  if (income.freq === 'biweekly') return income.amount * 26 / 12;
+  if (income.freq === 'weekly') return income.amount * 52 / 12;
   const months = Math.max(1, Number(income.spread) || 1);
   return income.amount / months;
 }
@@ -107,7 +109,12 @@ function render() {
   state.income.forEach(inc => {
     const row = document.createElement('div');
     row.className = 'row';
-    const meta = inc.freq === 'lump' ? `spread over ${inc.spread} mo · ${money(monthlyValueOf(inc))}/mo` : 'monthly';
+    const freqLabel = { monthly: 'monthly', biweekly: 'every 2 weeks', weekly: 'every week' };
+    const meta = inc.freq === 'lump'
+      ? `spread over ${inc.spread} mo · ${money(monthlyValueOf(inc))}/mo`
+      : inc.freq === 'monthly'
+        ? 'monthly'
+        : `${freqLabel[inc.freq]} · ${money(monthlyValueOf(inc))}/mo`;
     row.innerHTML = `
       <span class="row-tag ${inc.type}">${tagLabel[inc.type]}</span>
       <span class="row-name">${inc.name}<div class="row-meta">${meta}</div></span>
