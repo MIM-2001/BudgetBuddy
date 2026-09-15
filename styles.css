@@ -240,6 +240,7 @@ section.block {
   text-underline-offset: 3px;
 }
 .btn-text:hover { opacity: 1; }
+.btn-text.on-dark { color: var(--paper); }
 
 .form-card {
   background: var(--paper);
