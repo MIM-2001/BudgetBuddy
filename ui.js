@@ -164,7 +164,9 @@ function render() {
     const env = state.envelopes.find(e => e.id === x.envelopeId);
     const row = document.createElement('div');
     row.className = 'row';
+    const thumb = x.receiptThumb ? `<img class="row-thumb" src="${x.receiptThumb}" alt="Receipt">` : '';
     row.innerHTML = `
+      ${thumb}
       <span class="row-name">${x.name}<div class="row-meta">${env ? env.name : 'Uncategorized'}</div></span>
       <span class="row-leader"></span>
       <span class="row-amount">${money(x.amount)}</span>
@@ -217,6 +219,7 @@ document.getElementById('cancelIncome').addEventListener('click', () => {
 
 let editingEnvId = null;
 let editingExpId = null;
+let pendingReceiptThumb = null;
 
 function resetEnvForm() {
   editingEnvId = null;
@@ -226,12 +229,22 @@ function resetEnvForm() {
   document.getElementById('envForm').classList.remove('open');
 }
 
+function setReceiptPreview(thumbUrl) {
+  pendingReceiptThumb = thumbUrl;
+  const preview = document.getElementById('receiptPreview');
+  preview.src = thumbUrl || '';
+  preview.hidden = !thumbUrl;
+}
+
 function resetExpForm() {
   editingExpId = null;
   document.getElementById('saveExp').textContent = 'Log it';
   document.getElementById('expName').value = '';
   document.getElementById('expAmount').value = '';
   document.getElementById('expForm').classList.remove('open');
+  document.getElementById('receiptInput').value = '';
+  document.getElementById('receiptStatus').textContent = '';
+  setReceiptPreview(null);
 }
 
 document.getElementById('saveEnv').addEventListener('click', () => {
@@ -253,15 +266,41 @@ document.getElementById('saveExp').addEventListener('click', () => {
   const amount = parseFloat(document.getElementById('expAmount').value);
   const envelopeId = document.getElementById('expCategory').value;
   if (!name || !amount || amount <= 0 || !envelopeId) return;
+  const item = { name, amount, envelopeId, receiptThumb: pendingReceiptThumb };
   if (editingExpId) {
-    Store.updateExpense(editingExpId, { name, amount, envelopeId });
+    Store.updateExpense(editingExpId, item);
   } else {
-    Store.addExpense({ name, amount, envelopeId });
+    Store.addExpense(item);
   }
   resetExpForm();
   render();
 });
 document.getElementById('cancelExp').addEventListener('click', resetExpForm);
+
+document.getElementById('scanReceiptBtn').addEventListener('click', () => {
+  document.getElementById('receiptInput').click();
+});
+
+document.getElementById('receiptInput').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const status = document.getElementById('receiptStatus');
+  try {
+    const { thumbnail, guessedAmount } = await scanReceipt(file, {
+      onStatus: (msg) => { status.textContent = msg; },
+    });
+    setReceiptPreview(thumbnail);
+    if (guessedAmount) {
+      document.getElementById('expAmount').value = guessedAmount.toFixed(2);
+      status.textContent = `Guessed $${guessedAmount.toFixed(2)} from the receipt — check it before saving.`;
+    } else {
+      status.textContent = "Couldn't read an amount — enter it manually.";
+    }
+  } catch (err) {
+    console.error('BudgetBuddy: receipt scan failed', err);
+    status.textContent = "Couldn't scan that receipt — enter the amount manually.";
+  }
+});
 
 document.addEventListener('click', (e) => {
   if (e.target.dataset.removeIncome) { Store.removeIncome(e.target.dataset.removeIncome); render(); }
@@ -286,6 +325,8 @@ document.addEventListener('click', (e) => {
     document.getElementById('expAmount').value = exp.amount;
     document.getElementById('expCategory').value = exp.envelopeId;
     document.getElementById('saveExp').textContent = 'Save changes';
+    document.getElementById('receiptStatus').textContent = '';
+    setReceiptPreview(exp.receiptThumb || null);
     document.getElementById('expForm').classList.add('open');
   }
 });
