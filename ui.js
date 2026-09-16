@@ -148,6 +148,7 @@ function render() {
       </div>
       <div class="env-track"><div class="env-fill ${fillClass}" style="width:${envPct}%"></div></div>
       <div class="env-actions">
+        <button class="btn-text" data-edit-env="${env.id}">edit</button>
         <button class="btn-text" data-remove-env="${env.id}">remove category</button>
       </div>
     `;
@@ -167,7 +168,10 @@ function render() {
       <span class="row-name">${x.name}<div class="row-meta">${env ? env.name : 'Uncategorized'}</div></span>
       <span class="row-leader"></span>
       <span class="row-amount">${money(x.amount)}</span>
-      <button class="row-del" data-remove-exp="${x.id}" aria-label="Remove">×</button>
+      <span class="row-actions">
+        <button class="row-edit" data-edit-exp="${x.id}" aria-label="Edit">✎</button>
+        <button class="row-del" data-remove-exp="${x.id}" aria-label="Remove">×</button>
+      </span>
     `;
     expList.appendChild(row);
   });
@@ -211,39 +215,79 @@ document.getElementById('cancelIncome').addEventListener('click', () => {
   document.getElementById('incomeForm').classList.remove('open');
 });
 
+let editingEnvId = null;
+let editingExpId = null;
+
+function resetEnvForm() {
+  editingEnvId = null;
+  document.getElementById('saveEnv').textContent = 'Add category';
+  document.getElementById('envName').value = '';
+  document.getElementById('envAmount').value = '';
+  document.getElementById('envForm').classList.remove('open');
+}
+
+function resetExpForm() {
+  editingExpId = null;
+  document.getElementById('saveExp').textContent = 'Log it';
+  document.getElementById('expName').value = '';
+  document.getElementById('expAmount').value = '';
+  document.getElementById('expForm').classList.remove('open');
+}
+
 document.getElementById('saveEnv').addEventListener('click', () => {
   const name = document.getElementById('envName').value.trim();
   const amount = parseFloat(document.getElementById('envAmount').value);
   if (!name || !amount || amount <= 0) return;
-  Store.addEnvelope({ name, amount });
-  document.getElementById('envName').value = '';
-  document.getElementById('envAmount').value = '';
-  document.getElementById('envForm').classList.remove('open');
+  if (editingEnvId) {
+    Store.updateEnvelope(editingEnvId, { name, amount });
+  } else {
+    Store.addEnvelope({ name, amount });
+  }
+  resetEnvForm();
   render();
 });
-document.getElementById('cancelEnv').addEventListener('click', () => {
-  document.getElementById('envForm').classList.remove('open');
-});
+document.getElementById('cancelEnv').addEventListener('click', resetEnvForm);
 
 document.getElementById('saveExp').addEventListener('click', () => {
   const name = document.getElementById('expName').value.trim();
   const amount = parseFloat(document.getElementById('expAmount').value);
   const envelopeId = document.getElementById('expCategory').value;
   if (!name || !amount || amount <= 0 || !envelopeId) return;
-  Store.addExpense({ name, amount, envelopeId });
-  document.getElementById('expName').value = '';
-  document.getElementById('expAmount').value = '';
-  document.getElementById('expForm').classList.remove('open');
+  if (editingExpId) {
+    Store.updateExpense(editingExpId, { name, amount, envelopeId });
+  } else {
+    Store.addExpense({ name, amount, envelopeId });
+  }
+  resetExpForm();
   render();
 });
-document.getElementById('cancelExp').addEventListener('click', () => {
-  document.getElementById('expForm').classList.remove('open');
-});
+document.getElementById('cancelExp').addEventListener('click', resetExpForm);
 
 document.addEventListener('click', (e) => {
   if (e.target.dataset.removeIncome) { Store.removeIncome(e.target.dataset.removeIncome); render(); }
   if (e.target.dataset.removeEnv) { Store.removeEnvelope(e.target.dataset.removeEnv); render(); }
   if (e.target.dataset.removeExp) { Store.removeExpense(e.target.dataset.removeExp); render(); }
+
+  if (e.target.dataset.editEnv) {
+    const env = Store.getState().envelopes.find(x => x.id === e.target.dataset.editEnv);
+    if (!env) return;
+    editingEnvId = env.id;
+    document.getElementById('envName').value = env.name;
+    document.getElementById('envAmount').value = env.amount;
+    document.getElementById('saveEnv').textContent = 'Save changes';
+    document.getElementById('envForm').classList.add('open');
+  }
+
+  if (e.target.dataset.editExp) {
+    const exp = Store.getState().expenses.find(x => x.id === e.target.dataset.editExp);
+    if (!exp) return;
+    editingExpId = exp.id;
+    document.getElementById('expName').value = exp.name;
+    document.getElementById('expAmount').value = exp.amount;
+    document.getElementById('expCategory').value = exp.envelopeId;
+    document.getElementById('saveExp').textContent = 'Save changes';
+    document.getElementById('expForm').classList.add('open');
+  }
 });
 
 render();

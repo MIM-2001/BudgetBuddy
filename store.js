@@ -58,6 +58,10 @@ const Store = (() => {
       state.expenses = state.expenses.filter(x => x.envelopeId !== id);
       _save(state);
     },
+    updateEnvelope(id, item) {
+      state.envelopes = state.envelopes.map(e => e.id === id ? { ...e, ...item } : e);
+      _save(state);
+    },
 
     addExpense(item) {
       state.expenses.push({ id: crypto.randomUUID(), date: new Date().toISOString(), ...item });
@@ -65,6 +69,10 @@ const Store = (() => {
     },
     removeExpense(id) {
       state.expenses = state.expenses.filter(x => x.id !== id);
+      _save(state);
+    },
+    updateExpense(id, item) {
+      state.expenses = state.expenses.map(x => x.id === id ? { ...x, ...item } : x);
       _save(state);
     },
   };

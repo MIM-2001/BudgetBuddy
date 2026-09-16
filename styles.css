@@ -252,6 +252,18 @@ section.block {
   line-height: 1;
 }
 .row-del:hover { opacity: 0.9; color: var(--danger); }
+.row-edit {
+  background: none;
+  border: none;
+  color: var(--ink);
+  opacity: 0.35;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 2px 4px;
+  line-height: 1;
+}
+.row-edit:hover { opacity: 0.9; color: var(--blue); }
+.row-actions { display: flex; align-items: center; gap: 2px; }
 .row-meta { font-size: 11.5px; color: var(--ink-soft); margin-top: 2px; }
 
 /* ---------- Envelope cards ---------- */
