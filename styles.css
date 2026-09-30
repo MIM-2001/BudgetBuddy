@@ -30,6 +30,42 @@ body {
 header.top {
   padding: 28px 20px 40px;
   color: var(--ink);
+  position: relative;
+}
+header.top #signOutBtn {
+  position: absolute;
+  top: 28px;
+  right: 20px;
+}
+
+/* ---------- Login gate ---------- */
+.gate {
+  min-height: 100svh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.gate-card {
+  max-width: 360px;
+  text-align: center;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 36px 28px;
+}
+.gate-card .tagline {
+  max-width: none;
+  margin: 10px 0 22px;
+}
+.gate-card .btn {
+  width: 100%;
+}
+.gate-status {
+  margin-top: 14px;
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  min-height: 1em;
 }
 .wordmark {
   font-family: 'Fredoka', sans-serif;

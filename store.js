@@ -1,49 +1,104 @@
 /* =========================================================================
    DATA LAYER
-   Every read/write to app state goes through this object. It currently
-   persists to localStorage, but the UI code in ui.js never touches
-   localStorage directly — it only calls Store.* methods. That means the
-   whole storage backend (swap in a real API + database + login later)
-   can be replaced by rewriting just this file, with zero changes to
-   the rendering/UI code.
+   Every read/write to app state goes through this object. It persists
+   to a single hidden JSON file in the signed-in user's own Google
+   Drive (the "appDataFolder" — a space only this app can see, invisible
+   in the user's normal Drive UI), tied to their Google account rather
+   than to one browser. The UI code in ui.js never talks to the Drive
+   API directly — it only calls Store.* methods — so the storage backend
+   could be swapped again later (e.g. for a real multi-provider database)
+   by rewriting just this file.
+
+   Store.init(accessToken) must resolve before any other method is used;
+   it loads (or creates) that file and populates in-memory state from it.
+   Every mutation after that updates the in-memory state immediately
+   (so the UI feels instant) and fires off an async save to Drive in the
+   background.
    ========================================================================= */
 const Store = (() => {
-  const KEY = 'budgetbuddy_state_v1';
+  const FILE_NAME = 'budgetbuddy_state.json';
+  const FILES_URL = 'https://www.googleapis.com/drive/v3/files';
+  const UPLOAD_URL = 'https://www.googleapis.com/upload/drive/v3/files';
 
-  function _load() {
-    try {
-      const raw = localStorage.getItem(KEY);
-      const state = raw ? JSON.parse(raw) : { income: [], envelopes: [], expenses: [] };
-      if (typeof state.envelopeColorSeq !== 'number') state.envelopeColorSeq = state.envelopes.length;
-      return state;
-    } catch (e) {
-      console.error('BudgetBuddy: failed to load state', e);
-      return { income: [], envelopes: [], expenses: [], envelopeColorSeq: 0 };
-    }
+  let state = { income: [], envelopes: [], expenses: [], envelopeColorSeq: 0 };
+  let _accessToken = null;
+  let _fileId = null;
+
+  function _authHeaders(extra) {
+    return { Authorization: `Bearer ${_accessToken}`, ...extra };
   }
 
-  function _save(state) {
-    try {
-      localStorage.setItem(KEY, JSON.stringify(state));
-      return true;
-    } catch (e) {
-      console.error('BudgetBuddy: failed to save state', e);
-      return false;
-    }
+  async function _findFileId() {
+    const query = encodeURIComponent(`name='${FILE_NAME}'`);
+    const url = `${FILES_URL}?spaces=appDataFolder&fields=files(id)&q=${query}`;
+    const res = await fetch(url, { headers: _authHeaders() });
+    const data = await res.json();
+    return (data.files && data.files[0]) ? data.files[0].id : null;
   }
 
-  let state = _load();
+  async function _downloadFile(fileId) {
+    const res = await fetch(`${FILES_URL}/${fileId}?alt=media`, { headers: _authHeaders() });
+    return res.json();
+  }
+
+  async function _createFile(body) {
+    const metadata = { name: FILE_NAME, parents: ['appDataFolder'] };
+    const form = new FormData();
+    form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+    form.append('file', new Blob([JSON.stringify(body)], { type: 'application/json' }));
+    const res = await fetch(`${UPLOAD_URL}?uploadType=multipart&fields=id`, {
+      method: 'POST',
+      headers: _authHeaders(),
+      body: form,
+    });
+    const data = await res.json();
+    return data.id;
+  }
+
+  async function _updateFile(fileId, body) {
+    await fetch(`${UPLOAD_URL}/${fileId}?uploadType=media`, {
+      method: 'PATCH',
+      headers: _authHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify(body),
+    });
+  }
+
+  async function _save() {
+    try {
+      if (_fileId) {
+        await _updateFile(_fileId, state);
+      } else {
+        _fileId = await _createFile(state);
+      }
+    } catch (e) {
+      console.error('BudgetBuddy: failed to save to Drive', e);
+    }
+  }
 
   return {
     getState() { return state; },
 
+    async init(accessToken) {
+      _accessToken = accessToken;
+      _fileId = await _findFileId();
+      const loaded = _fileId ? await _downloadFile(_fileId) : {};
+      state = {
+        income: loaded.income || [],
+        envelopes: loaded.envelopes || [],
+        expenses: loaded.expenses || [],
+        envelopeColorSeq: typeof loaded.envelopeColorSeq === 'number'
+          ? loaded.envelopeColorSeq
+          : (loaded.envelopes ? loaded.envelopes.length : 0),
+      };
+    },
+
     addIncome(item) {
       state.income.push({ id: crypto.randomUUID(), ...item });
-      _save(state);
+      _save();
     },
     removeIncome(id) {
       state.income = state.income.filter(i => i.id !== id);
-      _save(state);
+      _save();
     },
 
     addEnvelope(item) {
@@ -51,29 +106,29 @@ const Store = (() => {
       // never shifts when other categories are added or removed later.
       const colorIndex = state.envelopeColorSeq++;
       state.envelopes.push({ id: crypto.randomUUID(), colorIndex, ...item });
-      _save(state);
+      _save();
     },
     removeEnvelope(id) {
       state.envelopes = state.envelopes.filter(e => e.id !== id);
       state.expenses = state.expenses.filter(x => x.envelopeId !== id);
-      _save(state);
+      _save();
     },
     updateEnvelope(id, item) {
       state.envelopes = state.envelopes.map(e => e.id === id ? { ...e, ...item } : e);
-      _save(state);
+      _save();
     },
 
     addExpense(item) {
       state.expenses.push({ id: crypto.randomUUID(), date: new Date().toISOString(), ...item });
-      _save(state);
+      _save();
     },
     removeExpense(id) {
       state.expenses = state.expenses.filter(x => x.id !== id);
-      _save(state);
+      _save();
     },
     updateExpense(id, item) {
       state.expenses = state.expenses.map(x => x.id === id ? { ...x, ...item } : x);
-      _save(state);
+      _save();
     },
   };
 })();

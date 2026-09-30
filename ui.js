@@ -331,4 +331,35 @@ document.addEventListener('click', (e) => {
   }
 });
 
-render();
+/* =========================================================================
+   LOGIN GATE
+   Nothing renders until the user is signed in — Store.init() needs an
+   access token before it can find/create the Drive file, so there's no
+   meaningful state to show beforehand.
+   ========================================================================= */
+document.getElementById('signInBtn').addEventListener('click', async () => {
+  const status = document.getElementById('gateStatus');
+  const btn = document.getElementById('signInBtn');
+  btn.disabled = true;
+  status.textContent = 'Signing in…';
+  try {
+    const token = await signIn();
+    status.textContent = 'Loading your budget…';
+    await Store.init(token);
+    document.getElementById('loginGate').hidden = true;
+    document.getElementById('app').hidden = false;
+    render();
+  } catch (err) {
+    console.error('BudgetBuddy: sign-in failed', err);
+    status.textContent = "Couldn't sign in — try again.";
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+document.getElementById('signOutBtn').addEventListener('click', () => {
+  signOut();
+  document.getElementById('app').hidden = true;
+  document.getElementById('loginGate').hidden = false;
+  document.getElementById('gateStatus').textContent = '';
+});

@@ -8,13 +8,24 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500&family=Fredoka:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
 
-<div class="wrap">
+<div class="gate" id="loginGate">
+  <div class="gate-card">
+    <div class="wordmark">BudgetBuddy</div>
+    <div class="tagline">Sign in to save your budget to your own Google Drive — it'll follow you across devices instead of living in just this browser.</div>
+    <button class="btn btn-primary" id="signInBtn">Sign in with Google</button>
+    <div class="gate-status" id="gateStatus"></div>
+  </div>
+</div>
+
+<div class="wrap" id="app" hidden>
   <header class="top">
     <div class="wordmark">BudgetBuddy</div>
     <div class="tagline">One step closer to financial independence!</div>
+    <button class="btn-text" id="signOutBtn">Sign out</button>
   </header>
 
   <div class="hero">
@@ -167,12 +178,13 @@
     </div>
   </section>
 
-  <footer>Prototype — everything here stays on this device.</footer>
+  <footer>Your budget, saved to your own Google Drive.</footer>
 </div>
 
 <script src="store.js"></script>
 <script src="charts.js"></script>
 <script src="receipt.js"></script>
+<script src="auth.js"></script>
 <script src="ui.js"></script>
 </body>
 </html>
