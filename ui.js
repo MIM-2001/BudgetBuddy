@@ -332,34 +332,81 @@ document.addEventListener('click', (e) => {
 });
 
 /* =========================================================================
-   LOGIN GATE
-   Nothing renders until the user is signed in — Store.init() needs an
-   access token before it can find/create the Drive file, so there's no
-   meaningful state to show beforehand.
+   TABS
+   The budget and settings views are swapped via the URL hash, so the
+   phone's back gesture returns from Settings to the budget.
    ========================================================================= */
-document.getElementById('signInBtn').addEventListener('click', async () => {
-  const status = document.getElementById('gateStatus');
-  const btn = document.getElementById('signInBtn');
-  btn.disabled = true;
-  status.textContent = 'Signing in…';
+function showView() {
+  const view = location.hash === '#settings' ? 'settings' : 'budget';
+  document.getElementById('budgetView').hidden = view !== 'budget';
+  document.getElementById('settingsView').hidden = view !== 'settings';
+  document.querySelectorAll('.tab').forEach(tab => {
+    const active = tab.dataset.view === view;
+    tab.classList.toggle('active', active);
+    if (active) tab.setAttribute('aria-current', 'page');
+    else tab.removeAttribute('aria-current');
+  });
+  window.scrollTo(0, 0);
+}
+window.addEventListener('hashchange', showView);
+
+/* =========================================================================
+   ACCOUNT
+   The app works signed out (saved on this device). Signing in from
+   Settings — or from the reconnect banner, after a reload drops the
+   in-memory token — loads the budget from the user's Google Drive.
+   ========================================================================= */
+function syncAccountUI() {
+  const connected = Store.isDriveConnected();
+  document.getElementById('signInBtn').hidden = connected;
+  document.getElementById('signOutBtn').hidden = !connected;
+  document.getElementById('accountStatus').textContent = connected
+    ? "You're signed in. Your budget saves to your own Google Drive and follows you to any device. Signing out removes it from this screen — it stays safe in your Drive."
+    : 'Your budget is only saved on this device. Sign in to back it up to your own Google Drive and use it on any device — anything you\'ve already entered comes with you.';
+  document.getElementById('reconnectBanner').hidden = connected || !Store.wasDriveConnected();
+  document.getElementById('saveStatus').textContent = connected
+    ? 'Your budget, saved to your own Google Drive.'
+    : 'Saved on this device only — sign in from Settings to back it up.';
+}
+
+function setSignInStatus(text) {
+  document.querySelectorAll('[data-sign-in-status]').forEach(el => { el.textContent = text; });
+}
+
+async function handleSignIn() {
+  const buttons = document.querySelectorAll('[data-sign-in]');
+  buttons.forEach(b => { b.disabled = true; });
+  setSignInStatus('Signing in…');
   try {
     const token = await signIn();
-    status.textContent = 'Loading your budget…';
-    await Store.init(token);
-    document.getElementById('loginGate').hidden = true;
-    document.getElementById('app').hidden = false;
-    render();
+    setSignInStatus('Loading your budget…');
+    await Store.connectDrive(token);
+    setSignInStatus('');
   } catch (err) {
     console.error('BudgetBuddy: sign-in failed', err);
-    status.textContent = "Couldn't sign in — try again.";
+    signOut();
+    Store.loadDevice();
+    setSignInStatus("Couldn't sign in — try again.");
   } finally {
-    btn.disabled = false;
+    buttons.forEach(b => { b.disabled = false; });
+    syncAccountUI();
+    render();
   }
+}
+
+document.querySelectorAll('[data-sign-in]').forEach(btn => {
+  btn.addEventListener('click', handleSignIn);
 });
 
 document.getElementById('signOutBtn').addEventListener('click', () => {
   signOut();
-  document.getElementById('app').hidden = true;
-  document.getElementById('loginGate').hidden = false;
-  document.getElementById('gateStatus').textContent = '';
+  Store.disconnectDrive();
+  setSignInStatus('');
+  syncAccountUI();
+  render();
 });
+
+Store.loadDevice();
+showView();
+syncAccountUI();
+render();

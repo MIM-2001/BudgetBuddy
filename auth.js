@@ -35,6 +35,13 @@ function _ensureTokenClient() {
       _resolveSignIn = null;
       _rejectSignIn = null;
     },
+    // Fires instead of `callback` when the popup is closed or blocked
+    // (common on mobile) — without it the sign-in promise never settles.
+    error_callback: (err) => {
+      if (_rejectSignIn) _rejectSignIn(new Error(err.type));
+      _resolveSignIn = null;
+      _rejectSignIn = null;
+    },
   });
 }
 
