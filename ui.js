@@ -332,30 +332,13 @@ document.addEventListener('click', (e) => {
 });
 
 /* =========================================================================
-   TABS
-   The budget and settings views are swapped via the URL hash, so the
-   phone's back gesture returns from Settings to the budget.
-   ========================================================================= */
-function showView() {
-  const view = location.hash === '#settings' ? 'settings' : 'budget';
-  document.getElementById('budgetView').hidden = view !== 'budget';
-  document.getElementById('settingsView').hidden = view !== 'settings';
-  document.querySelectorAll('.tab').forEach(tab => {
-    const active = tab.dataset.view === view;
-    tab.classList.toggle('active', active);
-    if (active) tab.setAttribute('aria-current', 'page');
-    else tab.removeAttribute('aria-current');
-  });
-  window.scrollTo(0, 0);
-}
-window.addEventListener('hashchange', showView);
-
-/* =========================================================================
    ACCOUNT
-   The app works signed out (saved on this device). Signing in from
-   Settings — or from the reconnect banner, after a reload drops the
-   in-memory token — loads the budget from the user's Google Drive.
+   The app works signed out (saved on this device). Signing in from the
+   Settings popup — or from the reconnect banner, after a reload drops
+   the in-memory token — loads the budget from the user's Google Drive.
    ========================================================================= */
+const settingsDialog = document.getElementById('settingsDialog');
+
 function syncAccountUI() {
   const connected = Store.isDriveConnected();
   document.getElementById('signInBtn').hidden = connected;
@@ -364,9 +347,10 @@ function syncAccountUI() {
     ? "You're signed in. Your budget saves to your own Google Drive and follows you to any device. Signing out removes it from this screen — it stays safe in your Drive."
     : 'Your budget is only saved on this device. Sign in to back it up to your own Google Drive and use it on any device — anything you\'ve already entered comes with you.';
   document.getElementById('reconnectBanner').hidden = connected || !Store.wasDriveConnected();
-  document.getElementById('saveStatus').textContent = connected
-    ? 'Your budget, saved to your own Google Drive.'
-    : 'Saved on this device only — sign in from Settings to back it up.';
+  document.getElementById('syncStatus').classList.toggle('synced', connected);
+  document.getElementById('syncText').textContent = connected
+    ? 'Saved to your Google Drive'
+    : 'Saved on this device only';
 }
 
 function setSignInStatus(text) {
@@ -382,6 +366,7 @@ async function handleSignIn() {
     setSignInStatus('Loading your budget…');
     await Store.connectDrive(token);
     setSignInStatus('');
+    settingsDialog.close();
   } catch (err) {
     console.error('BudgetBuddy: sign-in failed', err);
     signOut();
@@ -402,11 +387,19 @@ document.getElementById('signOutBtn').addEventListener('click', () => {
   signOut();
   Store.disconnectDrive();
   setSignInStatus('');
+  settingsDialog.close();
   syncAccountUI();
   render();
 });
 
+document.getElementById('openSettings').addEventListener('click', () => settingsDialog.showModal());
+document.getElementById('closeSettings').addEventListener('click', () => settingsDialog.close());
+// The popup's content fills the <dialog> box, so a click whose target is
+// the dialog itself landed on the dimmed backdrop around it.
+settingsDialog.addEventListener('click', (e) => {
+  if (e.target === settingsDialog) settingsDialog.close();
+});
+
 Store.loadDevice();
-showView();
 syncAccountUI();
 render();
