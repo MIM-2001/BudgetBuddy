@@ -142,17 +142,6 @@
     <div data-add-fields="expense">
       <div class="field-row">
         <div class="field">
-          <label>Receipt (optional)</label>
-          <div class="receipt-row">
-            <button type="button" class="btn btn-ghost btn-mini" id="scanReceiptBtn">📷 Scan receipt</button>
-            <input type="file" id="receiptInput" accept="image/*" capture="environment" hidden>
-            <img id="receiptPreview" class="receipt-thumb" hidden alt="Receipt preview">
-            <span id="receiptStatus" class="receipt-status"></span>
-          </div>
-        </div>
-      </div>
-      <div class="field-row">
-        <div class="field">
           <label for="expName">What was it</label>
           <input type="text" id="expName" placeholder="e.g. Textbook">
         </div>
@@ -227,7 +216,6 @@
 
 <script src="store.js"></script>
 <script src="charts.js"></script>
-<script src="receipt.js"></script>
 <script src="auth.js"></script>
 <script src="ui.js"></script>
 </body>

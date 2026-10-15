@@ -98,6 +98,7 @@ function expenseRow(x, envelopes) {
   const row = document.createElement('div');
   row.className = 'row';
   row.dataset.editExp = x.id;
+  // Expenses scanned before the receipt scanner was removed keep their photo.
   const thumb = x.receiptThumb ? `<img class="row-thumb" src="${x.receiptThumb}" alt="Receipt">` : '';
   row.innerHTML = `
     ${thumb}
@@ -272,7 +273,6 @@ syncSpreadField();
 let editingIncomeId = null;
 let editingEnvId = null;
 let editingExpId = null;
-let pendingReceiptThumb = null;
 
 function resetIncomeForm() {
   editingIncomeId = null;
@@ -290,20 +290,10 @@ function resetEnvForm() {
   document.getElementById('envAmount').value = '';
 }
 
-function setReceiptPreview(thumbUrl) {
-  pendingReceiptThumb = thumbUrl;
-  const preview = document.getElementById('receiptPreview');
-  preview.src = thumbUrl || '';
-  preview.hidden = !thumbUrl;
-}
-
 function resetExpForm() {
   editingExpId = null;
   document.getElementById('expName').value = '';
   document.getElementById('expAmount').value = '';
-  document.getElementById('receiptInput').value = '';
-  document.getElementById('receiptStatus').textContent = '';
-  setReceiptPreview(null);
 }
 
 // Each save returns true once it has stored something, so the popup knows
@@ -346,7 +336,7 @@ function saveExpense() {
   const amount = parseFloat(document.getElementById('expAmount').value);
   const envelopeId = document.getElementById('expCategory').value;
   if (!name || !amount || amount <= 0 || !envelopeId) return false;
-  const item = { name, amount, envelopeId, receiptThumb: pendingReceiptThumb };
+  const item = { name, amount, envelopeId };
   if (editingExpId) {
     Store.updateExpense(editingExpId, item);
   } else {
@@ -355,31 +345,6 @@ function saveExpense() {
   resetExpForm();
   return true;
 }
-
-document.getElementById('scanReceiptBtn').addEventListener('click', () => {
-  document.getElementById('receiptInput').click();
-});
-
-document.getElementById('receiptInput').addEventListener('change', async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-  const status = document.getElementById('receiptStatus');
-  try {
-    const { thumbnail, guessedAmount } = await scanReceipt(file, {
-      onStatus: (msg) => { status.textContent = msg; },
-    });
-    setReceiptPreview(thumbnail);
-    if (guessedAmount) {
-      document.getElementById('expAmount').value = guessedAmount.toFixed(2);
-      status.textContent = `Guessed $${guessedAmount.toFixed(2)} from the receipt — check it before saving.`;
-    } else {
-      status.textContent = "Couldn't read an amount — enter it manually.";
-    }
-  } catch (err) {
-    console.error('BudgetBuddy: receipt scan failed', err);
-    status.textContent = "Couldn't scan that receipt — enter the amount manually.";
-  }
-});
 
 function editIncome(id) {
   const inc = Store.getState().income.find(x => x.id === id);
@@ -410,8 +375,6 @@ function editExpense(id) {
   document.getElementById('expName').value = exp.name;
   document.getElementById('expAmount').value = exp.amount;
   document.getElementById('expCategory').value = exp.envelopeId;
-  document.getElementById('receiptStatus').textContent = '';
-  setReceiptPreview(exp.receiptThumb || null);
   openAddDialog('expense', 'Edit expense');
 }
 

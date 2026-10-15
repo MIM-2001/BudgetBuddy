@@ -408,23 +408,6 @@ input:focus, select:focus, .btn:focus-visible, .btn-text:focus-visible {
   outline-offset: 1px;
 }
 
-.receipt-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-.receipt-thumb {
-  width: 40px;
-  height: 40px;
-  border-radius: 8px;
-  object-fit: cover;
-  border: 1px solid var(--line-strong);
-}
-.receipt-status {
-  font-size: 12px;
-  color: var(--ink-soft);
-}
 .row-thumb {
   width: 32px;
   height: 32px;
