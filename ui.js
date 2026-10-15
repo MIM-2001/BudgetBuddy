@@ -109,6 +109,7 @@ function render() {
   state.income.forEach(inc => {
     const row = document.createElement('div');
     row.className = 'row';
+    row.dataset.editIncome = inc.id;
     const freqLabel = { monthly: 'monthly', biweekly: 'every 2 weeks', weekly: 'every week' };
     const meta = inc.freq === 'lump'
       ? `spread over ${inc.spread} mo · ${money(monthlyValueOf(inc))}/mo`
@@ -120,7 +121,10 @@ function render() {
       <span class="row-name">${inc.name}<div class="row-meta">${meta}</div></span>
       <span class="row-leader"></span>
       <span class="row-amount">${money(inc.amount)}</span>
-      <button class="row-del" data-remove-income="${inc.id}" aria-label="Remove">×</button>
+      <span class="row-actions">
+        <button class="row-edit" data-edit-income="${inc.id}" aria-label="Edit">✎</button>
+        <button class="row-del" data-remove-income="${inc.id}" aria-label="Remove">×</button>
+      </span>
     `;
     incList.appendChild(row);
   });
@@ -141,6 +145,7 @@ function render() {
     const fillClass = envSpent > env.amount ? 'over' : (envPct > 80 ? 'warn' : '');
     const card = document.createElement('div');
     card.className = 'envelope';
+    card.dataset.editEnv = env.id;
     card.innerHTML = `
       <div class="env-top">
         <span class="env-name">${env.name}</span>
@@ -164,6 +169,7 @@ function render() {
     const env = state.envelopes.find(e => e.id === x.envelopeId);
     const row = document.createElement('div');
     row.className = 'row';
+    row.dataset.editExp = x.id;
     const thumb = x.receiptThumb ? `<img class="row-thumb" src="${x.receiptThumb}" alt="Receipt">` : '';
     row.innerHTML = `
       ${thumb}
@@ -182,18 +188,27 @@ function render() {
 /* =========================================================================
    EVENTS
    ========================================================================= */
-document.getElementById('incFreq').addEventListener('change', (e) => {
-  document.getElementById('spreadField').style.display = e.target.value === 'lump' ? 'block' : 'none';
-});
-document.getElementById('spreadField').style.display = 'none';
+// "Spread over (months)" only applies to lump sums.
+function syncSpreadField() {
+  document.getElementById('spreadField').style.display =
+    document.getElementById('incFreq').value === 'lump' ? 'block' : 'none';
+}
+document.getElementById('incFreq').addEventListener('change', syncSpreadField);
+syncSpreadField();
 
+let editingIncomeId = null;
 let editingEnvId = null;
 let editingExpId = null;
 let pendingReceiptThumb = null;
 
 function resetIncomeForm() {
+  editingIncomeId = null;
   document.getElementById('incName').value = '';
   document.getElementById('incAmount').value = '';
+  document.getElementById('incType').value = 'aid';
+  document.getElementById('incFreq').value = 'monthly';
+  document.getElementById('incSpread').value = '4';
+  syncSpreadField();
 }
 
 function resetEnvForm() {
@@ -224,13 +239,18 @@ function saveIncome() {
   const name = document.getElementById('incName').value.trim();
   const amount = parseFloat(document.getElementById('incAmount').value);
   if (!name || !amount || amount <= 0) return false;
-  Store.addIncome({
+  const item = {
     name,
     type: document.getElementById('incType').value,
     amount,
     freq: document.getElementById('incFreq').value,
     spread: document.getElementById('incSpread').value,
-  });
+  };
+  if (editingIncomeId) {
+    Store.updateIncome(editingIncomeId, item);
+  } else {
+    Store.addIncome(item);
+  }
   resetIncomeForm();
   return true;
 }
@@ -288,31 +308,58 @@ document.getElementById('receiptInput').addEventListener('change', async (e) => 
   }
 });
 
+function editIncome(id) {
+  const inc = Store.getState().income.find(x => x.id === id);
+  if (!inc) return;
+  editingIncomeId = inc.id;
+  document.getElementById('incName').value = inc.name;
+  document.getElementById('incType').value = inc.type;
+  document.getElementById('incAmount').value = inc.amount;
+  document.getElementById('incFreq').value = inc.freq;
+  document.getElementById('incSpread').value = inc.spread || 4;
+  syncSpreadField();
+  openAddDialog('income', 'Edit income source');
+}
+
+function editEnvelope(id) {
+  const env = Store.getState().envelopes.find(x => x.id === id);
+  if (!env) return;
+  editingEnvId = env.id;
+  document.getElementById('envName').value = env.name;
+  document.getElementById('envAmount').value = env.amount;
+  openAddDialog('envelope', 'Edit category');
+}
+
+function editExpense(id) {
+  const exp = Store.getState().expenses.find(x => x.id === id);
+  if (!exp) return;
+  editingExpId = exp.id;
+  document.getElementById('expName').value = exp.name;
+  document.getElementById('expAmount').value = exp.amount;
+  document.getElementById('expCategory').value = exp.envelopeId;
+  document.getElementById('receiptStatus').textContent = '';
+  setReceiptPreview(exp.receiptThumb || null);
+  openAddDialog('expense', 'Edit expense');
+}
+
+// Tapping anywhere on an income row, category card or expense row opens it
+// for editing; its remove button deletes it instead.
 document.addEventListener('click', (e) => {
-  if (e.target.dataset.removeIncome) { Store.removeIncome(e.target.dataset.removeIncome); render(); }
-  if (e.target.dataset.removeEnv) { Store.removeEnvelope(e.target.dataset.removeEnv); render(); }
-  if (e.target.dataset.removeExp) { Store.removeExpense(e.target.dataset.removeExp); render(); }
-
-  if (e.target.dataset.editEnv) {
-    const env = Store.getState().envelopes.find(x => x.id === e.target.dataset.editEnv);
-    if (!env) return;
-    editingEnvId = env.id;
-    document.getElementById('envName').value = env.name;
-    document.getElementById('envAmount').value = env.amount;
-    openAddDialog('envelope', 'Edit category');
+  const remove = e.target.closest('[data-remove-income], [data-remove-env], [data-remove-exp]');
+  if (remove) {
+    const { removeIncome, removeEnv, removeExp } = remove.dataset;
+    if (removeIncome) Store.removeIncome(removeIncome);
+    if (removeEnv) Store.removeEnvelope(removeEnv);
+    if (removeExp) Store.removeExpense(removeExp);
+    render();
+    return;
   }
-
-  if (e.target.dataset.editExp) {
-    const exp = Store.getState().expenses.find(x => x.id === e.target.dataset.editExp);
-    if (!exp) return;
-    editingExpId = exp.id;
-    document.getElementById('expName').value = exp.name;
-    document.getElementById('expAmount').value = exp.amount;
-    document.getElementById('expCategory').value = exp.envelopeId;
-    document.getElementById('receiptStatus').textContent = '';
-    setReceiptPreview(exp.receiptThumb || null);
-    openAddDialog('expense', 'Edit expense');
-  }
+  const item = e.target.closest('[data-edit-income], [data-edit-env], [data-edit-exp]');
+  if (!item) return;
+  const { editIncome: incomeId, editEnv: envId, editExp: expId } = item.dataset;
+  if (incomeId) editIncome(incomeId);
+  if (envId) editEnvelope(envId);
+  if (expId) editExpense(expId);
 });
 
 /* =========================================================================
@@ -390,6 +437,7 @@ wirePopupClose(addDialog, 'closeAdd');
 // Closing without saving keeps a half-typed new entry for next time, but
 // drops an unsaved edit so the next Add starts blank.
 addDialog.addEventListener('close', () => {
+  if (editingIncomeId) resetIncomeForm();
   if (editingEnvId) resetEnvForm();
   if (editingExpId) resetExpForm();
 });
