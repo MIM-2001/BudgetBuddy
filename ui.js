@@ -182,51 +182,24 @@ function render() {
 /* =========================================================================
    EVENTS
    ========================================================================= */
-function toggleForm(formId, btnId) {
-  const form = document.getElementById(formId);
-  document.getElementById(btnId).addEventListener('click', () => {
-    form.classList.toggle('open');
-  });
-}
-toggleForm('incomeForm', 'toggleIncomeForm');
-toggleForm('envForm', 'toggleEnvForm');
-toggleForm('expForm', 'toggleExpForm');
-
 document.getElementById('incFreq').addEventListener('change', (e) => {
   document.getElementById('spreadField').style.display = e.target.value === 'lump' ? 'block' : 'none';
 });
 document.getElementById('spreadField').style.display = 'none';
 
-document.getElementById('saveIncome').addEventListener('click', () => {
-  const name = document.getElementById('incName').value.trim();
-  const amount = parseFloat(document.getElementById('incAmount').value);
-  if (!name || !amount || amount <= 0) return;
-  Store.addIncome({
-    name,
-    type: document.getElementById('incType').value,
-    amount,
-    freq: document.getElementById('incFreq').value,
-    spread: document.getElementById('incSpread').value,
-  });
-  document.getElementById('incName').value = '';
-  document.getElementById('incAmount').value = '';
-  document.getElementById('incomeForm').classList.remove('open');
-  render();
-});
-document.getElementById('cancelIncome').addEventListener('click', () => {
-  document.getElementById('incomeForm').classList.remove('open');
-});
-
 let editingEnvId = null;
 let editingExpId = null;
 let pendingReceiptThumb = null;
 
+function resetIncomeForm() {
+  document.getElementById('incName').value = '';
+  document.getElementById('incAmount').value = '';
+}
+
 function resetEnvForm() {
   editingEnvId = null;
-  document.getElementById('saveEnv').textContent = 'Add category';
   document.getElementById('envName').value = '';
   document.getElementById('envAmount').value = '';
-  document.getElementById('envForm').classList.remove('open');
 }
 
 function setReceiptPreview(thumbUrl) {
@@ -238,34 +211,48 @@ function setReceiptPreview(thumbUrl) {
 
 function resetExpForm() {
   editingExpId = null;
-  document.getElementById('saveExp').textContent = 'Log it';
   document.getElementById('expName').value = '';
   document.getElementById('expAmount').value = '';
-  document.getElementById('expForm').classList.remove('open');
   document.getElementById('receiptInput').value = '';
   document.getElementById('receiptStatus').textContent = '';
   setReceiptPreview(null);
 }
 
-document.getElementById('saveEnv').addEventListener('click', () => {
+// Each save returns true once it has stored something, so the popup knows
+// it can close; invalid input returns false and leaves the popup open.
+function saveIncome() {
+  const name = document.getElementById('incName').value.trim();
+  const amount = parseFloat(document.getElementById('incAmount').value);
+  if (!name || !amount || amount <= 0) return false;
+  Store.addIncome({
+    name,
+    type: document.getElementById('incType').value,
+    amount,
+    freq: document.getElementById('incFreq').value,
+    spread: document.getElementById('incSpread').value,
+  });
+  resetIncomeForm();
+  return true;
+}
+
+function saveEnvelope() {
   const name = document.getElementById('envName').value.trim();
   const amount = parseFloat(document.getElementById('envAmount').value);
-  if (!name || !amount || amount <= 0) return;
+  if (!name || !amount || amount <= 0) return false;
   if (editingEnvId) {
     Store.updateEnvelope(editingEnvId, { name, amount });
   } else {
     Store.addEnvelope({ name, amount });
   }
   resetEnvForm();
-  render();
-});
-document.getElementById('cancelEnv').addEventListener('click', resetEnvForm);
+  return true;
+}
 
-document.getElementById('saveExp').addEventListener('click', () => {
+function saveExpense() {
   const name = document.getElementById('expName').value.trim();
   const amount = parseFloat(document.getElementById('expAmount').value);
   const envelopeId = document.getElementById('expCategory').value;
-  if (!name || !amount || amount <= 0 || !envelopeId) return;
+  if (!name || !amount || amount <= 0 || !envelopeId) return false;
   const item = { name, amount, envelopeId, receiptThumb: pendingReceiptThumb };
   if (editingExpId) {
     Store.updateExpense(editingExpId, item);
@@ -273,9 +260,8 @@ document.getElementById('saveExp').addEventListener('click', () => {
     Store.addExpense(item);
   }
   resetExpForm();
-  render();
-});
-document.getElementById('cancelExp').addEventListener('click', resetExpForm);
+  return true;
+}
 
 document.getElementById('scanReceiptBtn').addEventListener('click', () => {
   document.getElementById('receiptInput').click();
@@ -313,8 +299,7 @@ document.addEventListener('click', (e) => {
     editingEnvId = env.id;
     document.getElementById('envName').value = env.name;
     document.getElementById('envAmount').value = env.amount;
-    document.getElementById('saveEnv').textContent = 'Save changes';
-    document.getElementById('envForm').classList.add('open');
+    openAddDialog('envelope', 'Edit category');
   }
 
   if (e.target.dataset.editExp) {
@@ -324,11 +309,89 @@ document.addEventListener('click', (e) => {
     document.getElementById('expName').value = exp.name;
     document.getElementById('expAmount').value = exp.amount;
     document.getElementById('expCategory').value = exp.envelopeId;
-    document.getElementById('saveExp').textContent = 'Save changes';
     document.getElementById('receiptStatus').textContent = '';
     setReceiptPreview(exp.receiptThumb || null);
-    document.getElementById('expForm').classList.add('open');
+    openAddDialog('expense', 'Edit expense');
   }
+});
+
+/* =========================================================================
+   ADD POPUP
+   One popup adds every kind of entry: the "What are you adding?" dropdown
+   shows only that kind's fields. Editing a category or an expense reuses
+   it with the kind locked.
+   ========================================================================= */
+const addDialog = document.getElementById('addDialog');
+const addType = document.getElementById('addType');
+const SAVE_LABELS = { expense: 'Add expense', income: 'Add income source', envelope: 'Add category' };
+const SAVERS = { expense: saveExpense, income: saveIncome, envelope: saveEnvelope };
+let lastPickedType = null;
+
+// × and a tap on the dimmed backdrop close a popup. The popup's content
+// fills the <dialog> box, so a click whose target is the dialog itself
+// landed on the backdrop.
+function wirePopupClose(dialog, closeBtnId) {
+  document.getElementById(closeBtnId).addEventListener('click', () => dialog.close());
+  dialog.addEventListener('click', (e) => {
+    if (e.target === dialog) dialog.close();
+  });
+}
+
+function showAddFields() {
+  const type = addType.value;
+  const editing = addType.disabled; // the kind is locked only while editing
+  document.querySelectorAll('[data-add-fields]').forEach(el => {
+    el.hidden = el.dataset.addFields !== type;
+  });
+  document.getElementById('saveAdd').textContent = editing ? 'Save changes' : SAVE_LABELS[type];
+  document.getElementById('noCategoryHint').hidden =
+    type !== 'expense' || Store.getState().envelopes.length > 0;
+}
+
+// Until the user picks a kind themselves, Add walks a new user through
+// setup in the page's order: income, then categories, then expenses.
+function defaultAddType() {
+  const state = Store.getState();
+  if (!state.income.length) return 'income';
+  if (!state.envelopes.length) return 'envelope';
+  return 'expense';
+}
+
+function openAddDialog(type, editTitle) {
+  addType.value = type;
+  addType.disabled = Boolean(editTitle);
+  document.getElementById('addTitle').textContent = editTitle || 'Add';
+  showAddFields();
+  addDialog.showModal();
+}
+
+document.getElementById('openAdd').addEventListener('click', () => {
+  openAddDialog(lastPickedType || defaultAddType());
+});
+
+addType.addEventListener('change', () => {
+  lastPickedType = addType.value;
+  showAddFields();
+});
+
+document.getElementById('switchToCategory').addEventListener('click', () => {
+  addType.value = 'envelope';
+  showAddFields();
+});
+
+document.getElementById('saveAdd').addEventListener('click', () => {
+  if (!SAVERS[addType.value]()) return;
+  addDialog.close();
+  render();
+});
+
+wirePopupClose(addDialog, 'closeAdd');
+
+// Closing without saving keeps a half-typed new entry for next time, but
+// drops an unsaved edit so the next Add starts blank.
+addDialog.addEventListener('close', () => {
+  if (editingEnvId) resetEnvForm();
+  if (editingExpId) resetExpForm();
 });
 
 /* =========================================================================
@@ -393,12 +456,7 @@ document.getElementById('signOutBtn').addEventListener('click', () => {
 });
 
 document.getElementById('openSettings').addEventListener('click', () => settingsDialog.showModal());
-document.getElementById('closeSettings').addEventListener('click', () => settingsDialog.close());
-// The popup's content fills the <dialog> box, so a click whose target is
-// the dialog itself landed on the dimmed backdrop around it.
-settingsDialog.addEventListener('click', (e) => {
-  if (e.target === settingsDialog) settingsDialog.close();
-});
+wirePopupClose(settingsDialog, 'closeSettings');
 
 Store.loadDevice();
 syncAccountUI();
