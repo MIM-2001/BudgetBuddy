@@ -86,7 +86,25 @@ function incomeByTypeSegments() {
    logged; the category chips narrow it to one category.
    ========================================================================= */
 let expenseFilter = null; // an envelope id, or null for every category
-const openMonths = new Set([monthKey(new Date())]);
+
+// Income, the budget and each month of expenses fold into one summary row.
+// Only the current month starts open, so the page stays short.
+const openFolds = new Set([`month:${monthKey(new Date())}`]);
+
+// A tappable summary row that opens or closes the list under it.
+function foldHead(key, name, count, total) {
+  const head = document.createElement('button');
+  head.className = 'fold-head';
+  head.dataset.fold = key;
+  head.setAttribute('aria-expanded', String(openFolds.has(key)));
+  head.innerHTML = `
+    <span class="fold-name">${name}</span>
+    <span class="fold-count">${count}</span>
+    <span class="fold-total">${total}</span>
+    <span class="fold-chevron" aria-hidden="true">›</span>
+  `;
+  return head;
+}
 
 function monthLabel(date) {
   return date.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
@@ -158,7 +176,11 @@ function render() {
   const incList = document.getElementById('incomeList');
   incList.innerHTML = '';
   document.getElementById('incomeEmpty').style.display = state.income.length ? 'none' : 'block';
-  state.income.forEach(inc => {
+  if (state.income.length) {
+    const n = state.income.length;
+    incList.appendChild(foldHead('income', `${n} ${n === 1 ? 'source' : 'sources'}`, '', `${money(monthlyIncome)}/mo`));
+  }
+  if (openFolds.has('income')) state.income.forEach(inc => {
     const row = document.createElement('div');
     row.className = 'row';
     row.dataset.editIncome = inc.id;
@@ -191,7 +213,14 @@ function render() {
   const envList = document.getElementById('envList');
   envList.innerHTML = '';
   document.getElementById('envEmpty').style.display = state.envelopes.length ? 'none' : 'block';
-  state.envelopes.forEach(env => {
+  if (state.envelopes.length) {
+    const n = state.envelopes.length;
+    const budgeted = state.envelopes.reduce((sum, e) => sum + e.amount, 0);
+    // spent / budgeted this month, the same format as each category's own row
+    envList.appendChild(foldHead('budget', `${n} ${n === 1 ? 'category' : 'categories'}`, '',
+      `${money(spent)} / ${money(budgeted)}`));
+  }
+  if (openFolds.has('budget')) state.envelopes.forEach(env => {
     const envSpent = spentInEnvelope(env.id);
     const envPct = env.amount > 0 ? Math.min(100, (envSpent / env.amount) * 100) : 0;
     const fillClass = envSpent > env.amount ? 'over' : (envPct > 80 ? 'warn' : '');
@@ -237,20 +266,11 @@ function render() {
     months.get(key).push(x);
   });
   months.forEach((items, key) => {
-    const open = openMonths.has(key);
     const total = items.reduce((sum, x) => sum + x.amount, 0);
-    const head = document.createElement('button');
-    head.className = 'month-head';
-    head.dataset.month = key;
-    head.setAttribute('aria-expanded', String(open));
-    head.innerHTML = `
-      <span class="month-name">${monthLabel(new Date(items[0].date))}</span>
-      <span class="month-count">${items.length} ${items.length === 1 ? 'expense' : 'expenses'}</span>
-      <span class="month-total">${money(total)}</span>
-      <span class="month-chevron" aria-hidden="true">›</span>
-    `;
-    expList.appendChild(head);
-    if (!open) return;
+    const n = items.length;
+    expList.appendChild(foldHead(`month:${key}`, monthLabel(new Date(items[0].date)),
+      `${n} ${n === 1 ? 'expense' : 'expenses'}`, money(total)));
+    if (!openFolds.has(`month:${key}`)) return;
     let lastDay = '';
     items.forEach(x => {
       const day = dayLabel(new Date(x.date));
@@ -385,15 +405,15 @@ function editExpense(id) {
   openAddDialog('expense', 'Edit expense');
 }
 
-// Month headers open and close, chips filter the expense history, and
+// Summary rows open and close, chips filter the expense history, and
 // tapping anywhere on an income row, category card or expense row opens it
 // for editing; its remove button deletes it instead.
 document.addEventListener('click', (e) => {
-  const month = e.target.closest('[data-month]');
-  if (month) {
-    const key = month.dataset.month;
-    if (openMonths.has(key)) openMonths.delete(key);
-    else openMonths.add(key);
+  const fold = e.target.closest('[data-fold]');
+  if (fold) {
+    const key = fold.dataset.fold;
+    if (openFolds.has(key)) openFolds.delete(key);
+    else openFolds.add(key);
     render();
     return;
   }
