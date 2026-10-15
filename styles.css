@@ -298,7 +298,8 @@ section.block {
   cursor: pointer;
 }
 .chip[aria-pressed="true"] { background: var(--blue); border-color: var(--blue); color: #fff; }
-.month-head {
+/* summary row that folds a list (income, budget, a month of expenses) */
+.fold-head {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -313,12 +314,12 @@ section.block {
   text-align: left;
   cursor: pointer;
 }
-.month-head:last-child { border-bottom: none; }
-.month-name { font-weight: 600; font-size: 15px; }
-.month-count { flex: 1; font-size: 12.5px; color: var(--ink-soft); }
-.month-total { font-family: 'IBM Plex Mono', monospace; font-weight: 600; font-size: 14.5px; }
-.month-chevron { font-size: 22px; line-height: 1; color: var(--ink-soft); transition: transform 0.15s ease; }
-.month-head[aria-expanded="true"] .month-chevron { transform: rotate(90deg); }
+.fold-head:last-child { border-bottom: none; }
+.fold-name { font-weight: 600; font-size: 15px; }
+.fold-count { flex: 1; font-size: 12.5px; color: var(--ink-soft); }
+.fold-total { font-family: 'IBM Plex Mono', monospace; font-weight: 600; font-size: 14.5px; }
+.fold-chevron { font-size: 22px; line-height: 1; color: var(--ink-soft); transition: transform 0.15s ease; }
+.fold-head[aria-expanded="true"] .fold-chevron { transform: rotate(90deg); }
 .day-head {
   padding: 12px 0 0;
   font-size: 11.5px;
