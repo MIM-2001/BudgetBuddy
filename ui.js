@@ -13,14 +13,25 @@ function totalMonthlyIncome() {
   return Store.getState().income.reduce((sum, i) => sum + monthlyValueOf(i), 0);
 }
 
+function monthKey(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
+// Budgets reset each calendar month: every total counts only this month's
+// expenses. Earlier months stay in the expense history.
+function expensesThisMonth() {
+  const current = monthKey(new Date());
+  return Store.getState().expenses.filter(x => monthKey(new Date(x.date)) === current);
+}
+
 function spentInEnvelope(envId) {
-  return Store.getState().expenses
+  return expensesThisMonth()
     .filter(x => x.envelopeId === envId)
     .reduce((sum, x) => sum + x.amount, 0);
 }
 
 function totalSpent() {
-  return Store.getState().expenses.reduce((sum, x) => sum + x.amount, 0);
+  return expensesThisMonth().reduce((sum, x) => sum + x.amount, 0);
 }
 
 function daysLeftInMonth() {
@@ -76,10 +87,6 @@ function incomeByTypeSegments() {
    ========================================================================= */
 let expenseFilter = null; // an envelope id, or null for every category
 const openMonths = new Set([monthKey(new Date())]);
-
-function monthKey(date) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-}
 
 function monthLabel(date) {
   return date.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
@@ -139,7 +146,7 @@ function render() {
 
   // Charts
   renderDonut(document.getElementById('categoryChart'), spendingByCategorySegments(), {
-    emptyText: 'Log an expense to see this chart.',
+    emptyText: state.expenses.length ? 'Nothing spent yet this month.' : 'Log an expense to see this chart.',
     formatValue: money,
   });
   renderDonut(document.getElementById('incomeChart'), incomeByTypeSegments(), {
