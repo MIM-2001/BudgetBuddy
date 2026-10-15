@@ -1,28 +1,84 @@
 /* =========================================================================
    DATA LAYER
-   Every read/write to app state goes through this object. It persists
-   to a single hidden JSON file in the signed-in user's own Google
-   Drive (the "appDataFolder" — a space only this app can see, invisible
-   in the user's normal Drive UI), tied to their Google account rather
-   than to one browser. The UI code in ui.js never talks to the Drive
-   API directly — it only calls Store.* methods — so the storage backend
-   could be swapped again later (e.g. for a real multi-provider database)
-   by rewriting just this file.
+   Every read/write to app state goes through this object. It has two
+   backends:
 
-   Store.init(accessToken) must resolve before any other method is used;
-   it loads (or creates) that file and populates in-memory state from it.
-   Every mutation after that updates the in-memory state immediately
-   (so the UI feels instant) and fires off an async save to Drive in the
-   background.
+   - Signed out: state lives in localStorage on this device only, so the
+     app is usable straight away without an account.
+   - Signed in: state lives in a single hidden JSON file in the user's own
+     Google Drive (the "appDataFolder" — a space only this app can see,
+     invisible in the user's normal Drive UI), tied to their Google
+     account rather than to one browser. On connecting, anything entered
+     while signed out is folded into that file and cleared from the
+     device.
+
+   The UI code in ui.js never talks to localStorage or the Drive API
+   directly — it only calls Store.* methods — so the storage backend
+   could be swapped again later by rewriting just this file.
+
+   Store.loadDevice() (or Store.connectDrive(token)) must run before any
+   other method is used. Every mutation after that updates the in-memory
+   state immediately (so the UI feels instant) and then saves to the
+   active backend — synchronously for localStorage, in the background
+   for Drive.
    ========================================================================= */
 const Store = (() => {
   const FILE_NAME = 'budgetbuddy_state.json';
   const FILES_URL = 'https://www.googleapis.com/drive/v3/files';
   const UPLOAD_URL = 'https://www.googleapis.com/upload/drive/v3/files';
+  const DEVICE_KEY = 'budgetbuddy_device_state_v1';
+  // Remembers that this device was signed in (never the token itself), so a
+  // reload — which drops the in-memory token — can offer a one-tap reconnect.
+  const LINKED_KEY = 'budgetbuddy_drive_linked';
 
-  let state = { income: [], envelopes: [], expenses: [], envelopeColorSeq: 0 };
+  let state = _normalize({});
   let _accessToken = null;
   let _fileId = null;
+
+  function _normalize(loaded) {
+    return {
+      income: loaded.income || [],
+      envelopes: loaded.envelopes || [],
+      expenses: loaded.expenses || [],
+      envelopeColorSeq: typeof loaded.envelopeColorSeq === 'number'
+        ? loaded.envelopeColorSeq
+        : (loaded.envelopes ? loaded.envelopes.length : 0),
+    };
+  }
+
+  function _isEmpty(s) {
+    return !s.income.length && !s.envelopes.length && !s.expenses.length;
+  }
+
+  function _loadDeviceState() {
+    try {
+      const raw = localStorage.getItem(DEVICE_KEY);
+      return _normalize(raw ? JSON.parse(raw) : {});
+    } catch (e) {
+      console.error('BudgetBuddy: failed to load device state', e);
+      return _normalize({});
+    }
+  }
+
+  function _saveDeviceState() {
+    try {
+      localStorage.setItem(DEVICE_KEY, JSON.stringify(state));
+    } catch (e) {
+      console.error('BudgetBuddy: failed to save device state', e);
+    }
+  }
+
+  // Appends signed-out entries to the account's state. Ids are UUIDs so
+  // nothing collides; device categories get the next free color slots so
+  // the account's existing category colors don't shift.
+  function _mergeInto(account, device) {
+    device.envelopes.forEach(env => {
+      account.envelopes.push({ ...env, colorIndex: account.envelopeColorSeq++ });
+    });
+    account.income.push(...device.income);
+    account.expenses.push(...device.expenses);
+    return account;
+  }
 
   function _authHeaders(extra) {
     return { Authorization: `Bearer ${_accessToken}`, ...extra };
@@ -51,25 +107,35 @@ const Store = (() => {
       headers: _authHeaders(),
       body: form,
     });
+    if (!res.ok) throw new Error(`Drive create failed: ${res.status}`);
     const data = await res.json();
     return data.id;
   }
 
   async function _updateFile(fileId, body) {
-    await fetch(`${UPLOAD_URL}/${fileId}?uploadType=media`, {
+    const res = await fetch(`${UPLOAD_URL}/${fileId}?uploadType=media`, {
       method: 'PATCH',
       headers: _authHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(body),
     });
+    if (!res.ok) throw new Error(`Drive update failed: ${res.status}`);
+  }
+
+  async function _writeDrive() {
+    if (_fileId) {
+      await _updateFile(_fileId, state);
+    } else {
+      _fileId = await _createFile(state);
+    }
   }
 
   async function _save() {
+    if (!_accessToken) {
+      _saveDeviceState();
+      return;
+    }
     try {
-      if (_fileId) {
-        await _updateFile(_fileId, state);
-      } else {
-        _fileId = await _createFile(state);
-      }
+      await _writeDrive();
     } catch (e) {
       console.error('BudgetBuddy: failed to save to Drive', e);
     }
@@ -78,18 +144,38 @@ const Store = (() => {
   return {
     getState() { return state; },
 
-    async init(accessToken) {
+    isDriveConnected() { return !!_accessToken; },
+
+    // True if this device signed in and never signed out, i.e. the user
+    // expects their Drive budget but a reload dropped the token.
+    wasDriveConnected() {
+      try { return localStorage.getItem(LINKED_KEY) === '1'; } catch (e) { return false; }
+    },
+
+    loadDevice() {
+      _accessToken = null;
+      _fileId = null;
+      state = _loadDeviceState();
+    },
+
+    async connectDrive(accessToken) {
       _accessToken = accessToken;
       _fileId = await _findFileId();
-      const loaded = _fileId ? await _downloadFile(_fileId) : {};
-      state = {
-        income: loaded.income || [],
-        envelopes: loaded.envelopes || [],
-        expenses: loaded.expenses || [],
-        envelopeColorSeq: typeof loaded.envelopeColorSeq === 'number'
-          ? loaded.envelopeColorSeq
-          : (loaded.envelopes ? loaded.envelopes.length : 0),
-      };
+      const account = _normalize(_fileId ? await _downloadFile(_fileId) : {});
+      const device = _loadDeviceState();
+      state = _mergeInto(account, device);
+      if (!_isEmpty(device)) {
+        // Only clear the device copy once Drive has it — a failed upload
+        // throws here and leaves the signed-out entries untouched.
+        await _writeDrive();
+        localStorage.removeItem(DEVICE_KEY);
+      }
+      localStorage.setItem(LINKED_KEY, '1');
+    },
+
+    disconnectDrive() {
+      localStorage.removeItem(LINKED_KEY);
+      this.loadDevice();
     },
 
     addIncome(item) {

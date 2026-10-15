@@ -332,34 +332,74 @@ document.addEventListener('click', (e) => {
 });
 
 /* =========================================================================
-   LOGIN GATE
-   Nothing renders until the user is signed in — Store.init() needs an
-   access token before it can find/create the Drive file, so there's no
-   meaningful state to show beforehand.
+   ACCOUNT
+   The app works signed out (saved on this device). Signing in from the
+   Settings popup — or from the reconnect banner, after a reload drops
+   the in-memory token — loads the budget from the user's Google Drive.
    ========================================================================= */
-document.getElementById('signInBtn').addEventListener('click', async () => {
-  const status = document.getElementById('gateStatus');
-  const btn = document.getElementById('signInBtn');
-  btn.disabled = true;
-  status.textContent = 'Signing in…';
+const settingsDialog = document.getElementById('settingsDialog');
+
+function syncAccountUI() {
+  const connected = Store.isDriveConnected();
+  document.getElementById('signInBtn').hidden = connected;
+  document.getElementById('signOutBtn').hidden = !connected;
+  document.getElementById('accountStatus').textContent = connected
+    ? "You're signed in. Your budget saves to your own Google Drive and follows you to any device. Signing out removes it from this screen — it stays safe in your Drive."
+    : 'Your budget is only saved on this device. Sign in to back it up to your own Google Drive and use it on any device — anything you\'ve already entered comes with you.';
+  document.getElementById('reconnectBanner').hidden = connected || !Store.wasDriveConnected();
+  document.getElementById('syncStatus').classList.toggle('synced', connected);
+  document.getElementById('syncText').textContent = connected
+    ? 'Saved to your Google Drive'
+    : 'Saved on this device only';
+}
+
+function setSignInStatus(text) {
+  document.querySelectorAll('[data-sign-in-status]').forEach(el => { el.textContent = text; });
+}
+
+async function handleSignIn() {
+  const buttons = document.querySelectorAll('[data-sign-in]');
+  buttons.forEach(b => { b.disabled = true; });
+  setSignInStatus('Signing in…');
   try {
     const token = await signIn();
-    status.textContent = 'Loading your budget…';
-    await Store.init(token);
-    document.getElementById('loginGate').hidden = true;
-    document.getElementById('app').hidden = false;
-    render();
+    setSignInStatus('Loading your budget…');
+    await Store.connectDrive(token);
+    setSignInStatus('');
+    settingsDialog.close();
   } catch (err) {
     console.error('BudgetBuddy: sign-in failed', err);
-    status.textContent = "Couldn't sign in — try again.";
+    signOut();
+    Store.loadDevice();
+    setSignInStatus("Couldn't sign in — try again.");
   } finally {
-    btn.disabled = false;
+    buttons.forEach(b => { b.disabled = false; });
+    syncAccountUI();
+    render();
   }
+}
+
+document.querySelectorAll('[data-sign-in]').forEach(btn => {
+  btn.addEventListener('click', handleSignIn);
 });
 
 document.getElementById('signOutBtn').addEventListener('click', () => {
   signOut();
-  document.getElementById('app').hidden = true;
-  document.getElementById('loginGate').hidden = false;
-  document.getElementById('gateStatus').textContent = '';
+  Store.disconnectDrive();
+  setSignInStatus('');
+  settingsDialog.close();
+  syncAccountUI();
+  render();
 });
+
+document.getElementById('openSettings').addEventListener('click', () => settingsDialog.showModal());
+document.getElementById('closeSettings').addEventListener('click', () => settingsDialog.close());
+// The popup's content fills the <dialog> box, so a click whose target is
+// the dialog itself landed on the dimmed backdrop around it.
+settingsDialog.addEventListener('click', (e) => {
+  if (e.target === settingsDialog) settingsDialog.close();
+});
+
+Store.loadDevice();
+syncAccountUI();
+render();

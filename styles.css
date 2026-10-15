@@ -14,6 +14,7 @@
   --radius: 14px;
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 body {
   margin: 0;
   background: var(--bg);
@@ -24,48 +25,13 @@ body {
 .wrap {
   max-width: 860px;
   margin: 0 auto;
-  padding: 0 20px 80px;
+  /* clears the fixed bottom bar */
+  padding: 0 20px calc(110px + env(safe-area-inset-bottom));
 }
 /* ---------- Header ---------- */
 header.top {
   padding: 28px 20px 40px;
   color: var(--ink);
-  position: relative;
-}
-header.top #signOutBtn {
-  position: absolute;
-  top: 28px;
-  right: 20px;
-}
-
-/* ---------- Login gate ---------- */
-.gate {
-  min-height: 100svh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-}
-.gate-card {
-  max-width: 360px;
-  text-align: center;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 36px 28px;
-}
-.gate-card .tagline {
-  max-width: none;
-  margin: 10px 0 22px;
-}
-.gate-card .btn {
-  width: 100%;
-}
-.gate-status {
-  margin-top: 14px;
-  font-size: 12.5px;
-  color: var(--ink-soft);
-  min-height: 1em;
 }
 .wordmark {
   font-family: 'Fredoka', sans-serif;
@@ -408,6 +374,175 @@ input:focus, select:focus, .btn:focus-visible, .btn-text:focus-visible {
   object-fit: cover;
   border: 1px solid var(--line);
   flex-shrink: 0;
+}
+
+/* ---------- Account / settings ---------- */
+.banner {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+.banner-text {
+  flex: 1 1 200px;
+  font-size: 13.5px;
+  color: var(--ink);
+}
+.banner .signin-status:empty { display: none; }
+.settings-label {
+  font-weight: 600;
+  font-size: 15px;
+}
+.settings-sub {
+  font-size: 13.5px;
+  color: var(--ink-soft);
+  line-height: 1.5;
+  margin: 6px 0 18px;
+}
+.btn-block {
+  display: block;
+  width: 100%;
+  min-height: 46px;
+  font-size: 14.5px;
+}
+.btn:disabled { opacity: 0.6; cursor: default; }
+.signin-status {
+  font-size: 12.5px;
+  color: var(--ink-soft);
+}
+.sheet .signin-status {
+  margin-top: 12px;
+  min-height: 1em;
+  text-align: center;
+}
+
+/* ---------- Bottom bar ---------- */
+.bottom-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  background: rgba(255, 255, 255, 0.96);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border-top: 1px solid var(--line);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.bottom-bar-inner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 0 20px 0 6px;
+}
+.bar-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-width: 72px;
+  min-height: 58px;
+  padding: 0 8px;
+  background: none;
+  border: none;
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--blue-deep);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.bar-btn:focus-visible { outline: 2px solid var(--blue); outline-offset: -4px; border-radius: 10px; }
+.sync-status {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+  font-size: 12px;
+  color: var(--ink-soft);
+  text-align: right;
+}
+.sync-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--line-strong);
+  flex-shrink: 0;
+}
+.sync-status.synced .sync-dot { background: var(--blue); }
+
+/* ---------- Settings popup ----------
+   A bottom sheet on phones, a centered card on wider screens. Only style
+   display-affecting rules under [open] — a closed <dialog> must stay
+   display: none. */
+.sheet {
+  width: 100%;
+  max-width: none;
+  margin: auto 0 0;
+  padding: 0;
+  border: none;
+  border-radius: 20px 20px 0 0;
+  background: var(--bg);
+  color: var(--ink);
+  box-shadow: 0 -8px 30px rgba(30, 42, 56, 0.18);
+}
+.sheet[open] { animation: sheet-up 0.22s ease-out; }
+.sheet::backdrop { background: rgba(30, 42, 56, 0.45); }
+html:has(.sheet[open]) { overflow: hidden; }
+.sheet-body {
+  padding: 18px 20px calc(24px + env(safe-area-inset-bottom));
+}
+.sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.sheet-title {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 21px;
+}
+.sheet-close {
+  width: 44px;
+  height: 44px;
+  margin: -8px -12px -8px 0;
+  background: none;
+  border: none;
+  font-size: 28px;
+  line-height: 1;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+.sheet-close:hover { color: var(--ink); }
+@keyframes sheet-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+@keyframes sheet-pop {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (min-width: 600px) {
+  .sheet {
+    width: min(420px, calc(100% - 32px));
+    margin: auto;
+    border-radius: 20px;
+  }
+  .sheet[open] { animation-name: sheet-pop; }
+  .sheet-body { padding-bottom: 24px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sheet[open] { animation: none; }
 }
 
 .empty {
