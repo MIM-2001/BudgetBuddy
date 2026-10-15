@@ -43,7 +43,7 @@
     </div>
     <div class="chart-grid">
       <div class="chart-card">
-        <div class="chart-card-title">Spending by category</div>
+        <div class="chart-card-title">Spending this month</div>
         <div id="categoryChart"></div>
       </div>
       <div class="chart-card">
@@ -78,8 +78,9 @@
   <!-- EXPENSES -->
   <section class="block">
     <div class="block-head">
-      <div class="block-title">Recent spending</div>
+      <div class="block-title">Your spending</div>
     </div>
+    <div class="chips" id="expFilters" hidden></div>
     <div class="panel">
       <div id="expList"></div>
       <div class="empty" id="expEmpty">Nothing logged yet. Spend something, then tap the + button to log it.</div>
@@ -139,17 +140,6 @@
     </div>
 
     <div data-add-fields="expense">
-      <div class="field-row">
-        <div class="field">
-          <label>Receipt (optional)</label>
-          <div class="receipt-row">
-            <button type="button" class="btn btn-ghost btn-mini" id="scanReceiptBtn">📷 Scan receipt</button>
-            <input type="file" id="receiptInput" accept="image/*" capture="environment" hidden>
-            <img id="receiptPreview" class="receipt-thumb" hidden alt="Receipt preview">
-            <span id="receiptStatus" class="receipt-status"></span>
-          </div>
-        </div>
-      </div>
       <div class="field-row">
         <div class="field">
           <label for="expName">What was it</label>
@@ -226,7 +216,6 @@
 
 <script src="store.js"></script>
 <script src="charts.js"></script>
-<script src="receipt.js"></script>
 <script src="auth.js"></script>
 <script src="ui.js"></script>
 </body>
