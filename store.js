@@ -146,7 +146,7 @@ const Store = (() => {
 
     isDriveConnected() { return !!_accessToken; },
 
-    // True if this device signed in and never signed out, i.e. the user
+    // True if this device signed in and never signed out, the user
     // expects their Drive budget but a reload dropped the token.
     wasDriveConnected() {
       try { return localStorage.getItem(LINKED_KEY) === '1'; } catch (e) { return false; }
@@ -184,6 +184,10 @@ const Store = (() => {
     },
     removeIncome(id) {
       state.income = state.income.filter(i => i.id !== id);
+      _save();
+    },
+    updateIncome(id, item) {
+      state.income = state.income.map(i => i.id === id ? { ...i, ...item } : i);
       _save();
     },
 
