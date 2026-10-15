@@ -69,6 +69,50 @@ function incomeByTypeSegments() {
 }
 
 /* =========================================================================
+   EXPENSE HISTORY
+   Expenses are listed by month, newest first, with a label per day. Only
+   the current month starts open, so the list stays short however much is
+   logged; the category chips narrow it to one category.
+   ========================================================================= */
+let expenseFilter = null; // an envelope id, or null for every category
+const openMonths = new Set([monthKey(new Date())]);
+
+function monthKey(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function monthLabel(date) {
+  return date.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+}
+
+function dayLabel(date) {
+  const today = new Date();
+  const yesterday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1);
+  if (date.toDateString() === today.toDateString()) return 'Today';
+  if (date.toDateString() === yesterday.toDateString()) return 'Yesterday';
+  return date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+}
+
+function expenseRow(x, envelopes) {
+  const env = envelopes.find(e => e.id === x.envelopeId);
+  const row = document.createElement('div');
+  row.className = 'row';
+  row.dataset.editExp = x.id;
+  const thumb = x.receiptThumb ? `<img class="row-thumb" src="${x.receiptThumb}" alt="Receipt">` : '';
+  row.innerHTML = `
+    ${thumb}
+    <span class="row-name">${x.name}<div class="row-meta">${env ? env.name : 'Uncategorized'}</div></span>
+    <span class="row-leader"></span>
+    <span class="row-amount">${money(x.amount)}</span>
+    <span class="row-actions">
+      <button class="row-edit" data-edit-exp="${x.id}" aria-label="Edit">✎</button>
+      <button class="row-del" data-remove-exp="${x.id}" aria-label="Remove">×</button>
+    </span>
+  `;
+  return row;
+}
+
+/* =========================================================================
    RENDER
    ========================================================================= */
 const tagLabel = { aid: 'Aid', loan: 'Loan', family: 'Family', job: 'Job' };
@@ -160,28 +204,57 @@ function render() {
     envList.appendChild(card);
   });
 
-  // Expense list (most recent first)
+  // Category filter chips (a filter needs at least two categories to choose from)
+  if (expenseFilter && !state.envelopes.some(e => e.id === expenseFilter)) expenseFilter = null;
+  const filters = document.getElementById('expFilters');
+  filters.hidden = state.envelopes.length < 2 || !state.expenses.length;
+  filters.innerHTML = [{ id: '', name: 'All' }, ...state.envelopes].map(env => `
+    <button class="chip" data-exp-filter="${env.id}" aria-pressed="${(expenseFilter || '') === env.id}">${env.name}</button>
+  `).join('');
+
+  // Expense history: months newest first; open months list their days
   const expList = document.getElementById('expList');
   expList.innerHTML = '';
-  const sorted = [...state.expenses].sort((a, b) => new Date(b.date) - new Date(a.date));
-  document.getElementById('expEmpty').style.display = sorted.length ? 'none' : 'block';
-  sorted.slice(0, 25).forEach(x => {
-    const env = state.envelopes.find(e => e.id === x.envelopeId);
-    const row = document.createElement('div');
-    row.className = 'row';
-    row.dataset.editExp = x.id;
-    const thumb = x.receiptThumb ? `<img class="row-thumb" src="${x.receiptThumb}" alt="Receipt">` : '';
-    row.innerHTML = `
-      ${thumb}
-      <span class="row-name">${x.name}<div class="row-meta">${env ? env.name : 'Uncategorized'}</div></span>
-      <span class="row-leader"></span>
-      <span class="row-amount">${money(x.amount)}</span>
-      <span class="row-actions">
-        <button class="row-edit" data-edit-exp="${x.id}" aria-label="Edit">✎</button>
-        <button class="row-del" data-remove-exp="${x.id}" aria-label="Remove">×</button>
-      </span>
+  document.getElementById('expEmpty').style.display = state.expenses.length ? 'none' : 'block';
+  const shown = state.expenses
+    .filter(x => !expenseFilter || x.envelopeId === expenseFilter)
+    .sort((a, b) => new Date(b.date) - new Date(a.date));
+  if (state.expenses.length && !shown.length) {
+    expList.innerHTML = '<div class="empty">No expenses in this category yet.</div>';
+  }
+  const months = new Map();
+  shown.forEach(x => {
+    const key = monthKey(new Date(x.date));
+    if (!months.has(key)) months.set(key, []);
+    months.get(key).push(x);
+  });
+  months.forEach((items, key) => {
+    const open = openMonths.has(key);
+    const total = items.reduce((sum, x) => sum + x.amount, 0);
+    const head = document.createElement('button');
+    head.className = 'month-head';
+    head.dataset.month = key;
+    head.setAttribute('aria-expanded', String(open));
+    head.innerHTML = `
+      <span class="month-name">${monthLabel(new Date(items[0].date))}</span>
+      <span class="month-count">${items.length} ${items.length === 1 ? 'expense' : 'expenses'}</span>
+      <span class="month-total">${money(total)}</span>
+      <span class="month-chevron" aria-hidden="true">›</span>
     `;
-    expList.appendChild(row);
+    expList.appendChild(head);
+    if (!open) return;
+    let lastDay = '';
+    items.forEach(x => {
+      const day = dayLabel(new Date(x.date));
+      if (day !== lastDay) {
+        const dayHead = document.createElement('div');
+        dayHead.className = 'day-head';
+        dayHead.textContent = day;
+        expList.appendChild(dayHead);
+        lastDay = day;
+      }
+      expList.appendChild(expenseRow(x, state.envelopes));
+    });
   });
 }
 
@@ -342,9 +415,24 @@ function editExpense(id) {
   openAddDialog('expense', 'Edit expense');
 }
 
-// Tapping anywhere on an income row, category card or expense row opens it
+// Month headers open and close, chips filter the expense history, and
+// tapping anywhere on an income row, category card or expense row opens it
 // for editing; its remove button deletes it instead.
 document.addEventListener('click', (e) => {
+  const month = e.target.closest('[data-month]');
+  if (month) {
+    const key = month.dataset.month;
+    if (openMonths.has(key)) openMonths.delete(key);
+    else openMonths.add(key);
+    render();
+    return;
+  }
+  const chip = e.target.closest('[data-exp-filter]');
+  if (chip) {
+    expenseFilter = chip.dataset.expFilter || null;
+    render();
+    return;
+  }
   const remove = e.target.closest('[data-remove-income], [data-remove-env], [data-remove-exp]');
   if (remove) {
     const { removeIncome, removeEnv, removeExp } = remove.dataset;
