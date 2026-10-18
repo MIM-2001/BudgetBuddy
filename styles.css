@@ -598,7 +598,6 @@ input:focus, select:focus, .btn:focus-visible, .btn-text:focus-visible {
   vertical-align: 2px;
 }
 .settings-sub-tight { margin: 8px 0 0; font-size: 12.5px; }
-.btn-link { display: flex; align-items: center; justify-content: center; text-decoration: none; }
 
 /* Light / Dark / System: radios dressed as one segmented control */
 .segmented {
