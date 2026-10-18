@@ -4,6 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
 <title>BudgetBuddy — stretch your aid</title>
+<meta name="color-scheme" content="light dark">
+<script>
+  // Paint the saved theme before the page shows, so dark mode never flashes
+  // white first. Same key as Store's THEME_KEY; unset follows the phone.
+  try {
+    const theme = localStorage.getItem('budgetbuddy_theme');
+    if (theme === 'light' || theme === 'dark') document.documentElement.dataset.theme = theme;
+  } catch (e) {}
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500&family=Fredoka:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -143,6 +152,16 @@
       </div>
     </div>
     <button class="btn btn-primary btn-block" id="saveProfile" type="button" disabled>Save changes</button>
+
+    <div class="settings-section">
+      <div class="settings-label" id="themeLabel">Appearance</div>
+      <div class="segmented" id="themeChoice" role="radiogroup" aria-labelledby="themeLabel">
+        <label><input type="radio" name="theme" value="light"><span>Light</span></label>
+        <label><input type="radio" name="theme" value="dark"><span>Dark</span></label>
+        <label><input type="radio" name="theme" value="system"><span>System</span></label>
+      </div>
+      <div class="settings-sub settings-sub-tight">System matches your phone's setting.</div>
+    </div>
 
     <div class="settings-section" role="group" aria-labelledby="alertsLabel">
       <div class="settings-label" id="alertsLabel">Email alerts <span class="soon-tag">Coming soon</span></div>

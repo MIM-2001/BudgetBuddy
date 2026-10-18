@@ -30,6 +30,10 @@ const Store = (() => {
   // Remembers that this device was signed in (never the token itself), so a
   // reload — which drops the in-memory token — can offer a one-tap reconnect.
   const LINKED_KEY = 'budgetbuddy_drive_linked';
+  // 'light' or 'dark'; unset follows the phone's own setting. Kept per device
+  // rather than in the budget so the right theme paints before anything
+  // loads — the inline script in index.html's <head> reads this same key.
+  const THEME_KEY = 'budgetbuddy_theme';
   const PROFILE_FIELDS = ['name', 'username', 'email', 'photo'];
 
   let state = _normalize({});
@@ -196,6 +200,17 @@ const Store = (() => {
       _save();
     },
 
+    getTheme() {
+      try { return localStorage.getItem(THEME_KEY) || 'system'; } catch (e) { return 'system'; }
+    },
+    setTheme(theme) {
+      try {
+        if (theme === 'system') localStorage.removeItem(THEME_KEY);
+        else localStorage.setItem(THEME_KEY, theme);
+      } catch (e) {
+        console.error('BudgetBuddy: failed to save theme', e);
+      }
+    },
 
     addIncome(item) {
       state.income.push({ id: crypto.randomUUID(), ...item });

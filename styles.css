@@ -13,7 +13,102 @@
   --danger: #FF5A73;
   --danger-text: #C8243F;
   --radius: 14px;
+  --blue-text: #1173B5;
+  --hero-edge: #0B5A96;
+  --sheet-bg: #FFFFFF;
+  --field-bg: #FFFFFF;
+  --bar-bg: rgba(255, 255, 255, 0.96);
+  --backdrop: rgba(30, 42, 56, 0.45);
   --switch-off: #B8C2CC;
+  --tag-loan-bg: #F5D9A8;
+  --tag-loan-ink: #6B4A16;
+  --tag-family-bg: #BFE3C4;
+  --tag-family-ink: #21562D;
+  /* Chart slots: see CHART_PALETTE in charts.js */
+  --chart-1: #1173B5;
+  --chart-2: #eb6834;
+  --chart-3: #1baf7a;
+  --chart-4: #eda100;
+  --chart-5: #e87ba4;
+  --chart-6: #008300;
+  --chart-7: #4a3aa7;
+  --chart-8: #e34948;
+  --chart-other: #9AA5B1;
+  color-scheme: light;
+}
+
+/* ---------- Dark mode ----------
+   Follows the phone unless the Profile page picked Light or Dark (stamped
+   as data-theme on <html>). The two blocks hold the same values — keep
+   them in sync. Chart colors are the same hues stepped for the dark
+   surface, re-checked with the dataviz palette validator. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ink: #E6EDF3;
+    --ink-soft: #9DABB9;
+    --bg: #0F1720;
+    --surface: #16212C;
+    --surface-dim: #22303E;
+    --line: rgba(230, 237, 243, 0.12);
+    --line-strong: rgba(230, 237, 243, 0.26);
+    --blue-deep: #8CC8F2;
+    --sky: rgba(143, 211, 255, 0.16);
+    --danger-text: #FF8095;
+    --blue-text: #6DB5EA;
+    --hero-edge: #1173B5;
+    --sheet-bg: #182430;
+    --field-bg: #0F1720;
+    --bar-bg: rgba(15, 23, 32, 0.94);
+    --backdrop: rgba(0, 0, 0, 0.6);
+    --switch-off: #3A4A5A;
+    --tag-loan-bg: rgba(245, 217, 168, 0.16);
+    --tag-loan-ink: #F2CF93;
+    --tag-family-bg: rgba(191, 227, 196, 0.16);
+    --tag-family-ink: #B5DDBB;
+    --chart-1: #2f8bd3;
+    --chart-2: #d95926;
+    --chart-3: #199e70;
+    --chart-4: #c98500;
+    --chart-5: #d55181;
+    --chart-6: #008300;
+    --chart-7: #9085e9;
+    --chart-8: #e66767;
+    --chart-other: #6B7785;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --ink: #E6EDF3;
+  --ink-soft: #9DABB9;
+  --bg: #0F1720;
+  --surface: #16212C;
+  --surface-dim: #22303E;
+  --line: rgba(230, 237, 243, 0.12);
+  --line-strong: rgba(230, 237, 243, 0.26);
+  --blue-deep: #8CC8F2;
+  --sky: rgba(143, 211, 255, 0.16);
+  --danger-text: #FF8095;
+  --blue-text: #6DB5EA;
+  --hero-edge: #1173B5;
+  --sheet-bg: #182430;
+  --field-bg: #0F1720;
+  --bar-bg: rgba(15, 23, 32, 0.94);
+  --backdrop: rgba(0, 0, 0, 0.6);
+  --switch-off: #3A4A5A;
+  --tag-loan-bg: rgba(245, 217, 168, 0.16);
+  --tag-loan-ink: #F2CF93;
+  --tag-family-bg: rgba(191, 227, 196, 0.16);
+  --tag-family-ink: #B5DDBB;
+  --chart-1: #2f8bd3;
+  --chart-2: #d95926;
+  --chart-3: #199e70;
+  --chart-4: #c98500;
+  --chart-5: #d55181;
+  --chart-6: #008300;
+  --chart-7: #9085e9;
+  --chart-8: #e66767;
+  --chart-other: #6B7785;
+  color-scheme: dark;
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
@@ -61,7 +156,7 @@ header.top {
   color: #fff;
   position: relative;
   overflow: hidden;
-  border: 1px solid var(--blue-deep);
+  border: 1px solid var(--hero-edge);
 }
 .hero-label {
   font-size: 13px;
@@ -231,8 +326,8 @@ section.block {
   color: var(--blue-deep);
   white-space: nowrap;
 }
-.row-tag.loan { background: #F5D9A8; color: #6B4A16; }
-.row-tag.family { background: #BFE3C4; color: #21562D; }
+.row-tag.loan { background: var(--tag-loan-bg); color: var(--tag-loan-ink); }
+.row-tag.family { background: var(--tag-family-bg); color: var(--tag-family-ink); }
 .row-tag.job { background: var(--surface-dim); color: var(--ink); }
 .row-leader {
   flex: 1;
@@ -260,7 +355,7 @@ section.block {
 .row-edit {
   background: none;
   border: none;
-  color: var(--blue);
+  color: var(--blue-text);
   opacity: 0.7;
   cursor: pointer;
   font-size: 14px;
@@ -377,7 +472,7 @@ section.block {
 }
 .btn:active { transform: scale(0.97); }
 .btn-primary { background: var(--blue); color: #fff; }
-.btn-ghost { background: transparent; color: var(--blue); border: 1px solid var(--line-strong); }
+.btn-ghost { background: transparent; color: var(--blue-text); border: 1px solid var(--line-strong); }
 .btn-mini { padding: 6px 10px; font-size: 12px; }
 .btn-text {
   background: none; border: none; color: var(--blue-deep); opacity: 0.75;
@@ -403,7 +498,7 @@ input, select {
   padding: 9px 10px;
   border-radius: 8px;
   border: 1px solid var(--line-strong);
-  background: #fff;
+  background: var(--field-bg);
   color: var(--ink);
 }
 input:focus, select:focus, .btn:focus-visible, .btn-text:focus-visible {
@@ -478,7 +573,7 @@ input:focus, select:focus, .btn:focus-visible, .btn-text:focus-visible {
   z-index: 1;
   margin: 0 -20px 4px;
   padding: 14px 20px 10px;
-  background: var(--bg);
+  background: var(--sheet-bg);
 }
 .profile-photo {
   display: flex;
@@ -504,6 +599,38 @@ input:focus, select:focus, .btn:focus-visible, .btn-text:focus-visible {
 }
 .settings-sub-tight { margin: 8px 0 0; font-size: 12.5px; }
 .btn-link { display: flex; align-items: center; justify-content: center; text-decoration: none; }
+
+/* Light / Dark / System: radios dressed as one segmented control */
+.segmented {
+  display: flex;
+  gap: 4px;
+  margin-top: 10px;
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--surface-dim);
+}
+.segmented label { position: relative; flex: 1; margin: 0; }
+.segmented input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.segmented span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  border-radius: 9px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+.segmented input:checked + span { background: var(--blue); color: #fff; }
+.segmented input:focus-visible + span { outline: 2px solid var(--blue); outline-offset: 2px; }
 
 /* A whole row toggles its switch */
 .switch-row {
@@ -586,7 +713,7 @@ input[role="switch"]:focus-visible { outline: 2px solid var(--blue); outline-off
   right: 0;
   bottom: 0;
   z-index: 10;
-  background: rgba(255, 255, 255, 0.96);
+  background: var(--bar-bg);
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
   border-top: 1px solid var(--line);
@@ -670,12 +797,12 @@ input[role="switch"]:focus-visible { outline: 2px solid var(--blue); outline-off
   padding: 0;
   border: none;
   border-radius: 20px 20px 0 0;
-  background: var(--bg);
+  background: var(--sheet-bg);
   color: var(--ink);
   box-shadow: 0 -8px 30px rgba(30, 42, 56, 0.18);
 }
 .sheet[open] { animation: sheet-up 0.22s ease-out; }
-.sheet::backdrop { background: rgba(30, 42, 56, 0.45); }
+.sheet::backdrop { background: var(--backdrop); }
 html:has(.sheet[open]) { overflow: hidden; }
 .sheet-body {
   padding: 18px 20px calc(24px + env(safe-area-inset-bottom));

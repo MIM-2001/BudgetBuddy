@@ -6,18 +6,20 @@
    documented default order. Colors are assigned by entity identity
    (see Store.addEnvelope's colorIndex), never by position, so a
    category keeps its color even as siblings are added or removed.
+   The hex values live in styles.css (--chart-1 … --chart-8) so dark mode
+   can swap in its own validated steps of the same hues.
    ========================================================================= */
 const CHART_PALETTE = [
-  '#1173B5', // blue (brand)
-  '#eb6834', // orange
-  '#1baf7a', // aqua
-  '#eda100', // yellow
-  '#e87ba4', // magenta
-  '#008300', // green
-  '#4a3aa7', // violet
-  '#e34948', // red
+  'var(--chart-1)', // blue (brand)
+  'var(--chart-2)', // orange
+  'var(--chart-3)', // aqua
+  'var(--chart-4)', // yellow
+  'var(--chart-5)', // magenta
+  'var(--chart-6)', // green
+  'var(--chart-7)', // violet
+  'var(--chart-8)', // red
 ];
-const CHART_OTHER_COLOR = '#9AA5B1';
+const CHART_OTHER_COLOR = 'var(--chart-other)';
 
 function paletteColor(index) {
   return Number.isInteger(index) && index >= 0 && index < CHART_PALETTE.length

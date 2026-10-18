@@ -524,8 +524,9 @@ addDialog.addEventListener('close', () => {
    PROFILE
    The avatar at the bottom left opens the Profile page. Photo, name,
    username and email are a draft until "Save changes" (closing drops it);
-   the alert switches apply as soon as they're flipped. All of it is saved
-   with the budget, so it follows the user to Drive.
+   the theme and alert switches apply as soon as they're flipped. All of
+   it but the theme is saved with the budget, so it follows the user to
+   Drive.
    ========================================================================= */
 const profileDialog = document.getElementById('profileDialog');
 const saveProfileBtn = document.getElementById('saveProfile');
@@ -691,6 +692,22 @@ Object.entries(profileInputs).forEach(([key, input]) => {
 });
 saveProfileBtn.addEventListener('click', saveProfile);
 
+// Light and Dark stamp data-theme on <html>; System removes it, so the
+// stylesheet's prefers-color-scheme rules follow the phone.
+function syncThemeUI() {
+  const theme = Store.getTheme();
+  document.querySelectorAll('input[name="theme"]').forEach(radio => {
+    radio.checked = radio.value === theme;
+  });
+}
+
+document.getElementById('themeChoice').addEventListener('change', (e) => {
+  const theme = e.target.value;
+  Store.setTheme(theme);
+  if (theme === 'system') delete document.documentElement.dataset.theme;
+  else document.documentElement.dataset.theme = theme;
+});
+
 // Nothing sends these yet; the choices are saved so they're ready when
 // email sending is switched on.
 const alertGoalMet = document.getElementById('alertGoalMet');
@@ -720,6 +737,7 @@ function openProfile() {
   profileJustSaved = false;
   ['photoError', 'usernameError', 'emailError'].forEach(id => setFieldError(id, ''));
   syncProfileForm();
+  syncThemeUI();
   syncAlertsUI();
   profileDialog.showModal();
   profileDialog.scrollTop = 0;
