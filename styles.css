@@ -141,6 +141,10 @@ header.top {
   color: var(--blue-deep);
 }
 .wordmark::before { content: "🧾"; font-style: normal; font-size: 22px; }
+/* "Welcome back, Gio" replaces the app name while signed in; a long
+   username wraps instead of running off the screen. */
+.wordmark.greeting { display: block; overflow-wrap: anywhere; }
+.wordmark.greeting::before { content: none; }
 .tagline {
   margin-top: 6px;
   font-size: 14px;
@@ -598,7 +602,6 @@ input:focus, select:focus, .btn:focus-visible, .btn-text:focus-visible {
   vertical-align: 2px;
 }
 .settings-sub-tight { margin: 8px 0 0; font-size: 12.5px; }
-.btn-link { display: flex; align-items: center; justify-content: center; text-decoration: none; }
 
 /* Light / Dark / System: radios dressed as one segmented control */
 .segmented {
