@@ -580,6 +580,18 @@ function renderBarAvatar() {
   renderAvatar(document.getElementById('barAvatar'), Store.getState().profile);
 }
 
+// Signed in, the header greets the user by first name (or username, if
+// there's no name) in place of the app name.
+function renderGreeting() {
+  const { name, username } = Store.getState().profile;
+  const signedIn = Store.isDriveConnected();
+  const who = name.split(' ')[0] || username;
+  const wordmark = document.getElementById('wordmark');
+  wordmark.classList.toggle('greeting', signedIn);
+  wordmark.textContent = !signedIn ? 'BudgetBuddy'
+    : who ? `Welcome back, ${who}` : 'Welcome back!';
+}
+
 function readProfileForm() {
   return {
     name: cleanName(profileInputs.name.value),
@@ -622,6 +634,7 @@ function saveProfile() {
   Store.updateProfile(draft);
   profileJustSaved = true;
   renderBarAvatar();
+  renderGreeting();
   syncProfileForm();
   syncAlertsUI();
 }
@@ -754,6 +767,7 @@ wirePopupClose(profileDialog, 'closeProfile');
    ========================================================================= */
 function syncAccountUI() {
   renderBarAvatar();
+  renderGreeting();
   const connected = Store.isDriveConnected();
   document.getElementById('signInBtn').hidden = connected;
   document.getElementById('signOutBtn').hidden = !connected;

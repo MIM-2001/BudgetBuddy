@@ -141,6 +141,10 @@ header.top {
   color: var(--blue-deep);
 }
 .wordmark::before { content: "🧾"; font-style: normal; font-size: 22px; }
+/* "Welcome back, Gio" replaces the app name while signed in; a long
+   username wraps instead of running off the screen. */
+.wordmark.greeting { display: block; overflow-wrap: anywhere; }
+.wordmark.greeting::before { content: none; }
 .tagline {
   margin-top: 6px;
   font-size: 14px;
