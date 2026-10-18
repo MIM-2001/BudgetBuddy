@@ -30,13 +30,21 @@ const Store = (() => {
   // Remembers that this device was signed in (never the token itself), so a
   // reload — which drops the in-memory token — can offer a one-tap reconnect.
   const LINKED_KEY = 'budgetbuddy_drive_linked';
+  const PROFILE_FIELDS = ['name', 'username', 'email', 'photo'];
 
   let state = _normalize({});
   let _accessToken = null;
   let _fileId = null;
 
   function _normalize(loaded) {
+    const profile = loaded.profile || {};
     return {
+      // photo is a small JPEG data URL, so it travels inside this same file
+      profile: {
+        name: '', username: '', email: '', photo: '',
+        ...profile,
+        alerts: { goalMet: false, recurring: false, ...profile.alerts },
+      },
       income: loaded.income || [],
       envelopes: loaded.envelopes || [],
       expenses: loaded.expenses || [],
@@ -47,7 +55,8 @@ const Store = (() => {
   }
 
   function _isEmpty(s) {
-    return !s.income.length && !s.envelopes.length && !s.expenses.length;
+    return !PROFILE_FIELDS.some(k => s.profile[k])
+      && !s.income.length && !s.envelopes.length && !s.expenses.length;
   }
 
   function _loadDeviceState() {
@@ -70,8 +79,12 @@ const Store = (() => {
 
   // Appends signed-out entries to the account's state. Ids are UUIDs so
   // nothing collides; device categories get the next free color slots so
-  // the account's existing category colors don't shift.
+  // the account's existing category colors don't shift. The account keeps
+  // its own profile; anything set while signed out only fills blank fields.
   function _mergeInto(account, device) {
+    PROFILE_FIELDS.forEach(k => {
+      if (!account.profile[k]) account.profile[k] = device.profile[k];
+    });
     device.envelopes.forEach(env => {
       account.envelopes.push({ ...env, colorIndex: account.envelopeColorSeq++ });
     });
@@ -177,6 +190,12 @@ const Store = (() => {
       localStorage.removeItem(LINKED_KEY);
       this.loadDevice();
     },
+
+    updateProfile(fields) {
+      state.profile = { ...state.profile, ...fields };
+      _save();
+    },
+
 
     addIncome(item) {
       state.income.push({ id: crypto.randomUUID(), ...item });
