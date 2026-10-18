@@ -4,6 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
 <title>BudgetBuddy — stretch your aid</title>
+<meta name="color-scheme" content="light dark">
+<script>
+  // Paint the saved theme before the page shows, so dark mode never flashes
+  // white first. Same key as Store's THEME_KEY; unset follows the phone.
+  try {
+    const theme = localStorage.getItem('budgetbuddy_theme');
+    if (theme === 'light' || theme === 'dark') document.documentElement.dataset.theme = theme;
+  } catch (e) {}
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500&family=Fredoka:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -92,9 +101,9 @@
 
 <div class="bottom-bar">
   <div class="bottom-bar-inner">
-    <button class="bar-btn" id="openSettings" type="button">
-      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-      <span>Settings</span>
+    <button class="bar-btn" id="openProfile" type="button">
+      <span class="avatar" id="barAvatar" aria-hidden="true"></span>
+      <span>Profile</span>
     </button>
     <div class="sync-status" id="syncStatus" aria-live="polite">
       <span class="sync-dot"></span>
@@ -106,18 +115,86 @@
   </div>
 </div>
 
-<!-- SETTINGS POPUP -->
-<dialog class="sheet" id="settingsDialog" aria-labelledby="settingsTitle">
+<!-- PROFILE POPUP -->
+<dialog class="sheet sheet-tall" id="profileDialog" aria-labelledby="profileTitle">
   <div class="sheet-body">
-    <div class="sheet-head">
-      <div class="sheet-title" id="settingsTitle">Settings</div>
-      <button class="sheet-close" id="closeSettings" type="button" aria-label="Close">×</button>
+    <div class="sheet-head sheet-head-sticky">
+      <div class="sheet-title" id="profileTitle">Profile</div>
+      <button class="sheet-close" id="closeProfile" type="button" aria-label="Close">×</button>
     </div>
-    <div class="settings-label">Google Drive backup</div>
-    <div class="settings-sub" id="accountStatus"></div>
-    <button class="btn btn-primary btn-block" id="signInBtn" data-sign-in>Sign in with Google</button>
-    <button class="btn btn-ghost btn-block" id="signOutBtn" hidden>Sign out</button>
-    <div class="signin-status" data-sign-in-status></div>
+
+    <!-- Photo, name, username and email are edited together and saved with
+         one button; the switches further down apply straight away. -->
+    <div class="profile-photo">
+      <span class="avatar avatar-xl" id="profileAvatar" aria-hidden="true"></span>
+      <div class="profile-photo-actions">
+        <button class="btn btn-ghost btn-mini" id="pickPhoto" type="button">Set picture</button>
+        <button class="btn-text" id="removePhoto" type="button">Remove</button>
+      </div>
+      <input type="file" id="photoInput" accept="image/*" hidden>
+      <div class="field-error" id="photoError" role="alert"></div>
+    </div>
+
+    <div class="field-stack">
+      <div class="field">
+        <label for="profileName">Name</label>
+        <input type="text" id="profileName" placeholder="Your name" maxlength="50" autocomplete="name" enterkeyhint="next">
+      </div>
+      <div class="field">
+        <label for="profileUsername">Username</label>
+        <input type="text" id="profileUsername" placeholder="e.g. gio_saves" maxlength="30" autocomplete="username" autocapitalize="off" spellcheck="false" enterkeyhint="next" aria-describedby="usernameError">
+        <div class="field-error" id="usernameError"></div>
+      </div>
+      <div class="field">
+        <label for="profileEmail">Email</label>
+        <input type="email" id="profileEmail" placeholder="you@example.com" maxlength="254" autocomplete="email" inputmode="email" autocapitalize="off" spellcheck="false" enterkeyhint="done" aria-describedby="emailError">
+        <div class="field-error" id="emailError"></div>
+      </div>
+    </div>
+    <button class="btn btn-primary btn-block" id="saveProfile" type="button" disabled>Save changes</button>
+
+    <div class="settings-section">
+      <div class="settings-label" id="themeLabel">Appearance</div>
+      <div class="segmented" id="themeChoice" role="radiogroup" aria-labelledby="themeLabel">
+        <label><input type="radio" name="theme" value="light"><span>Light</span></label>
+        <label><input type="radio" name="theme" value="dark"><span>Dark</span></label>
+        <label><input type="radio" name="theme" value="system"><span>System</span></label>
+      </div>
+      <div class="settings-sub settings-sub-tight">System matches your phone's setting.</div>
+    </div>
+
+    <div class="settings-section" role="group" aria-labelledby="alertsLabel">
+      <div class="settings-label" id="alertsLabel">Email alerts <span class="soon-tag">Coming soon</span></div>
+      <label class="switch-row">
+        <span>
+          Goal met
+          <span class="switch-sub">When you reach one of your goals</span>
+        </span>
+        <input type="checkbox" role="switch" id="alertGoalMet">
+      </label>
+      <label class="switch-row">
+        <span>
+          Recurring payments
+          <span class="switch-sub">Each time the app logs a recurring payment for you</span>
+        </span>
+        <input type="checkbox" role="switch" id="alertRecurring">
+      </label>
+      <div class="settings-sub settings-sub-tight" id="alertsNote"></div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-label">Google Drive backup</div>
+      <div class="settings-sub" id="accountStatus"></div>
+      <button class="btn btn-primary btn-block" id="signInBtn" data-sign-in>Sign in with Google</button>
+      <button class="btn btn-ghost btn-block" id="signOutBtn" hidden>Sign out</button>
+      <div class="signin-status" data-sign-in-status></div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-label">Password</div>
+      <div class="settings-sub">You sign in with Google, so BudgetBuddy has no separate password. To reset it, change your Google password.</div>
+      <a class="btn btn-ghost btn-block btn-link" href="https://myaccount.google.com/signinoptions/password" target="_blank" rel="noopener">Reset password on Google ↗</a>
+    </div>
   </div>
 </dialog>
 

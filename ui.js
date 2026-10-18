@@ -521,14 +521,239 @@ addDialog.addEventListener('close', () => {
 });
 
 /* =========================================================================
+   PROFILE
+   The avatar at the bottom left opens the Profile page. Photo, name,
+   username and email are a draft until "Save changes" (closing drops it);
+   the theme and alert switches apply as soon as they're flipped. All of
+   it but the theme is saved with the budget, so it follows the user to
+   Drive.
+   ========================================================================= */
+const profileDialog = document.getElementById('profileDialog');
+const saveProfileBtn = document.getElementById('saveProfile');
+const photoInput = document.getElementById('photoInput');
+const profileInputs = {
+  name: document.getElementById('profileName'),
+  username: document.getElementById('profileUsername'),
+  email: document.getElementById('profileEmail'),
+};
+const FIELD_ERRORS = { username: 'usernameError', email: 'emailError' };
+const USERNAME_PATTERN = /^[A-Za-z0-9._]{3,30}$/;
+const PHOTO_SIZE = 160; // px square: about 10 KB as a JPEG, shown at up to 80px
+
+let draftPhoto = '';
+let profileJustSaved = false;
+
+const PERSON_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="9" r="4"/><path d="M4.5 21a7.5 7.5 0 0 1 15 0"/></svg>';
+
+// Runs of spaces collapse, so "  Gio   C " saves as "Gio C".
+function cleanName(text) {
+  return text.trim().replace(/\s+/g, ' ');
+}
+
+// First letter of the first and last words: "Gio" → "G", "Gio C" → "GC".
+// Array.from keeps an emoji whole instead of splitting it in half.
+function initials(text) {
+  const words = text.split(' ');
+  const first = Array.from(words[0])[0];
+  const last = words.length > 1 ? Array.from(words[words.length - 1])[0] : '';
+  return (first + last).toUpperCase();
+}
+
+// The photo if there is one, else initials from the name (or the
+// username), else a plain person icon.
+function renderAvatar(el, profile) {
+  const label = profile.name || profile.username;
+  el.classList.toggle('avatar-empty', !profile.photo && !label);
+  if (profile.photo) {
+    const img = document.createElement('img');
+    img.src = profile.photo;
+    img.alt = '';
+    el.replaceChildren(img);
+  } else if (label) {
+    el.textContent = initials(label);
+  } else {
+    el.innerHTML = PERSON_ICON;
+  }
+}
+
+function renderBarAvatar() {
+  renderAvatar(document.getElementById('barAvatar'), Store.getState().profile);
+}
+
+function readProfileForm() {
+  return {
+    name: cleanName(profileInputs.name.value),
+    username: profileInputs.username.value.trim(),
+    email: profileInputs.email.value.trim(),
+    photo: draftPhoto,
+  };
+}
+
+// The big avatar previews the draft, and Save only lights up once
+// something differs from what's saved.
+function syncProfileForm() {
+  const draft = readProfileForm();
+  const saved = Store.getState().profile;
+  const changed = Object.keys(draft).some(k => draft[k] !== saved[k]);
+  if (changed) profileJustSaved = false;
+  renderAvatar(document.getElementById('profileAvatar'), draft);
+  document.getElementById('removePhoto').hidden = !draft.photo;
+  saveProfileBtn.disabled = !changed;
+  saveProfileBtn.textContent = profileJustSaved ? 'Saved ✓' : 'Save changes';
+}
+
+function setFieldError(id, text) {
+  document.getElementById(id).textContent = text;
+}
+
+// Shows what's wrong under each field; true when the draft can be saved.
+function validateProfile(draft) {
+  const usernameOk = !draft.username || USERNAME_PATTERN.test(draft.username);
+  const emailOk = !draft.email || profileInputs.email.checkValidity();
+  setFieldError('usernameError', usernameOk ? '' : 'Use 3–30 letters, numbers, periods or underscores.');
+  setFieldError('emailError', emailOk ? '' : 'Enter an email like you@example.com.');
+  return usernameOk && emailOk;
+}
+
+function saveProfile() {
+  if (saveProfileBtn.disabled) return;
+  const draft = readProfileForm();
+  if (!validateProfile(draft)) return;
+  Store.updateProfile(draft);
+  profileJustSaved = true;
+  renderBarAvatar();
+  syncProfileForm();
+  syncAlertsUI();
+}
+
+// Center-crops to a square and shrinks it, so a full-size phone photo
+// becomes a small JPEG that fits in the budget file.
+function shrinkPhoto(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const side = Math.min(img.naturalWidth, img.naturalHeight);
+      const canvas = document.createElement('canvas');
+      canvas.width = canvas.height = PHOTO_SIZE;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#fff'; // transparent PNGs would otherwise turn black
+      ctx.fillRect(0, 0, PHOTO_SIZE, PHOTO_SIZE);
+      ctx.drawImage(img,
+        (img.naturalWidth - side) / 2, (img.naturalHeight - side) / 2, side, side,
+        0, 0, PHOTO_SIZE, PHOTO_SIZE);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL('image/jpeg', 0.85));
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('BudgetBuddy: not a readable image'));
+    };
+    img.src = url;
+  });
+}
+
+document.getElementById('pickPhoto').addEventListener('click', () => photoInput.click());
+
+photoInput.addEventListener('change', async () => {
+  const file = photoInput.files[0];
+  photoInput.value = ''; // so picking the same file again still fires
+  if (!file) return;
+  setFieldError('photoError', '');
+  try {
+    draftPhoto = await shrinkPhoto(file);
+  } catch (err) {
+    console.error(err);
+    setFieldError('photoError', "Couldn't use that picture. Try a different one.");
+  }
+  syncProfileForm();
+});
+
+document.getElementById('removePhoto').addEventListener('click', () => {
+  draftPhoto = '';
+  syncProfileForm();
+});
+
+// Enter moves down the fields and saves from the last one. preventDefault
+// keeps that same key press from also "clicking" whatever has focus next.
+const profileFieldOrder = [profileInputs.name, profileInputs.username, profileInputs.email];
+Object.entries(profileInputs).forEach(([key, input]) => {
+  input.addEventListener('input', () => {
+    if (FIELD_ERRORS[key]) setFieldError(FIELD_ERRORS[key], '');
+    syncProfileForm();
+  });
+  input.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    const next = profileFieldOrder[profileFieldOrder.indexOf(input) + 1];
+    if (next) next.focus();
+    else saveProfile();
+  });
+});
+saveProfileBtn.addEventListener('click', saveProfile);
+
+// Light and Dark stamp data-theme on <html>; System removes it, so the
+// stylesheet's prefers-color-scheme rules follow the phone.
+function syncThemeUI() {
+  const theme = Store.getTheme();
+  document.querySelectorAll('input[name="theme"]').forEach(radio => {
+    radio.checked = radio.value === theme;
+  });
+}
+
+document.getElementById('themeChoice').addEventListener('change', (e) => {
+  const theme = e.target.value;
+  Store.setTheme(theme);
+  if (theme === 'system') delete document.documentElement.dataset.theme;
+  else document.documentElement.dataset.theme = theme;
+});
+
+// Nothing sends these yet; the choices are saved so they're ready when
+// email sending is switched on.
+const alertGoalMet = document.getElementById('alertGoalMet');
+const alertRecurring = document.getElementById('alertRecurring');
+
+function syncAlertsUI() {
+  const { email, alerts } = Store.getState().profile;
+  alertGoalMet.checked = alerts.goalMet;
+  alertRecurring.checked = alerts.recurring;
+  document.getElementById('alertsNote').textContent = email
+    ? `Alerts will be sent to ${email}.`
+    : 'Add your email above so alerts have somewhere to go.';
+}
+
+function saveAlerts() {
+  Store.updateProfile({ alerts: { goalMet: alertGoalMet.checked, recurring: alertRecurring.checked } });
+}
+alertGoalMet.addEventListener('change', saveAlerts);
+alertRecurring.addEventListener('change', saveAlerts);
+
+// Every open starts from what's saved, so closing without saving drops
+// the draft.
+function openProfile() {
+  const saved = Store.getState().profile;
+  Object.entries(profileInputs).forEach(([key, input]) => { input.value = saved[key]; });
+  draftPhoto = saved.photo;
+  profileJustSaved = false;
+  ['photoError', 'usernameError', 'emailError'].forEach(id => setFieldError(id, ''));
+  syncProfileForm();
+  syncThemeUI();
+  syncAlertsUI();
+  profileDialog.showModal();
+  profileDialog.scrollTop = 0;
+}
+
+document.getElementById('openProfile').addEventListener('click', openProfile);
+wirePopupClose(profileDialog, 'closeProfile');
+
+/* =========================================================================
    ACCOUNT
    The app works signed out (saved on this device). Signing in from the
-   Settings popup — or from the reconnect banner, after a reload drops
+   Profile popup — or from the reconnect banner, after a reload drops
    the in-memory token — loads the budget from the user's Google Drive.
    ========================================================================= */
-const settingsDialog = document.getElementById('settingsDialog');
-
 function syncAccountUI() {
+  renderBarAvatar();
   const connected = Store.isDriveConnected();
   document.getElementById('signInBtn').hidden = connected;
   document.getElementById('signOutBtn').hidden = !connected;
@@ -555,7 +780,7 @@ async function handleSignIn() {
     setSignInStatus('Loading your budget…');
     await Store.connectDrive(token);
     setSignInStatus('');
-    settingsDialog.close();
+    profileDialog.close();
   } catch (err) {
     console.error('BudgetBuddy: sign-in failed', err);
     signOut();
@@ -576,13 +801,10 @@ document.getElementById('signOutBtn').addEventListener('click', () => {
   signOut();
   Store.disconnectDrive();
   setSignInStatus('');
-  settingsDialog.close();
+  profileDialog.close();
   syncAccountUI();
   render();
 });
-
-document.getElementById('openSettings').addEventListener('click', () => settingsDialog.showModal());
-wirePopupClose(settingsDialog, 'closeSettings');
 
 Store.loadDevice();
 syncAccountUI();
