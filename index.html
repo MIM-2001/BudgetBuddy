@@ -41,8 +41,10 @@
     <div class="hero-sub">
       <span><b id="heroRemaining">$0</b> left this month</span>
       <span><b id="heroDays">0</b> days to go</span>
+      <span id="heroBillsWrap" hidden><b id="heroBills">$0</b> saved for bills</span>
     </div>
     <div class="hero-bar-track"><div class="hero-bar-fill" id="heroBar" style="width:0%"></div></div>
+    <button class="hero-btn" id="openAfford" type="button">Can I afford this?</button>
   </div>
 
   <!-- OVERVIEW CHARTS -->
@@ -59,6 +61,27 @@
         <div class="chart-card-title">Income by source type</div>
         <div id="incomeChart"></div>
       </div>
+    </div>
+  </section>
+
+  <!-- SMART CALENDAR (calendar.js draws it with FullCalendar) -->
+  <section class="block">
+    <div class="block-head">
+      <div class="block-title">Your month</div>
+    </div>
+    <div class="panel cal-panel">
+      <div id="calendar"></div>
+    </div>
+  </section>
+
+  <!-- CHALLENGES (challenges.js) -->
+  <section class="block">
+    <div class="block-head">
+      <div class="block-title">Challenges</div>
+      <div class="block-hint" id="challengeWins"></div>
+    </div>
+    <div class="panel">
+      <div id="challengeList"></div>
     </div>
   </section>
 
@@ -124,7 +147,7 @@
     </div>
 
     <!-- Photo, name, username and email are edited together and saved with
-         one button; the switches further down apply straight away. -->
+         one button; the Appearance choice further down applies straight away. -->
     <div class="profile-photo">
       <span class="avatar avatar-xl" id="profileAvatar" aria-hidden="true"></span>
       <div class="profile-photo-actions">
@@ -161,25 +184,6 @@
         <label><input type="radio" name="theme" value="system"><span>System</span></label>
       </div>
       <div class="settings-sub settings-sub-tight">System matches your phone's setting.</div>
-    </div>
-
-    <div class="settings-section" role="group" aria-labelledby="alertsLabel">
-      <div class="settings-label" id="alertsLabel">Email alerts <span class="soon-tag">Coming soon</span></div>
-      <label class="switch-row">
-        <span>
-          Goal met
-          <span class="switch-sub">When you reach one of your goals</span>
-        </span>
-        <input type="checkbox" role="switch" id="alertGoalMet">
-      </label>
-      <label class="switch-row">
-        <span>
-          Recurring payments
-          <span class="switch-sub">Each time the app logs a recurring payment for you</span>
-        </span>
-        <input type="checkbox" role="switch" id="alertRecurring">
-      </label>
-      <div class="settings-sub settings-sub-tight" id="alertsNote"></div>
     </div>
 
     <div class="settings-section">
@@ -285,9 +289,37 @@
   </div>
 </dialog>
 
+<!-- CAN I AFFORD THIS? POPUP (affordability.js) -->
+<dialog class="sheet" id="affordDialog" aria-labelledby="affordTitle">
+  <div class="sheet-body">
+    <div class="sheet-head">
+      <div class="sheet-title" id="affordTitle">Can I afford this?</div>
+      <button class="sheet-close" id="closeAfford" type="button" aria-label="Close">×</button>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="affordPrice">Price</label>
+        <input type="number" id="affordPrice" placeholder="0.00" min="0" step="0.01" inputmode="decimal" enterkeyhint="go">
+      </div>
+      <div class="field">
+        <label for="affordCategory">Category</label>
+        <select id="affordCategory"></select>
+      </div>
+    </div>
+    <button class="btn btn-primary btn-block" id="affordCheck" type="button">Check</button>
+    <div class="afford-result" id="affordResult" aria-live="polite"></div>
+  </div>
+</dialog>
+
 <script src="store.js"></script>
 <script src="charts.js"></script>
 <script src="auth.js"></script>
 <script src="ui.js"></script>
+<!-- FullCalendar draws the month in calendar.js (it brings its own CSS) -->
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
+<script src="calendar.js"></script>
+<script src="affordability.js"></script>
+<script src="challenges.js"></script>
+<script src="main.js"></script>
 </body>
 </html>

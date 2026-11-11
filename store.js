@@ -47,11 +47,14 @@ const Store = (() => {
       profile: {
         name: '', username: '', email: '', photo: '',
         ...profile,
-        alerts: { goalMet: false, recurring: false, ...profile.alerts },
       },
       income: loaded.income || [],
       envelopes: loaded.envelopes || [],
       expenses: loaded.expenses || [],
+      // store word → category id, learned from what the user picks (calendar.js)
+      categoryRules: loaded.categoryRules || {},
+      // challenges saved by the first draft of this feature had no status; skip them
+      challenges: (loaded.challenges || []).filter(c => c.status),
       envelopeColorSeq: typeof loaded.envelopeColorSeq === 'number'
         ? loaded.envelopeColorSeq
         : (loaded.envelopes ? loaded.envelopes.length : 0),
@@ -60,7 +63,8 @@ const Store = (() => {
 
   function _isEmpty(s) {
     return !PROFILE_FIELDS.some(k => s.profile[k])
-      && !s.income.length && !s.envelopes.length && !s.expenses.length;
+      && !s.income.length && !s.envelopes.length && !s.expenses.length
+      && !s.challenges.length;
   }
 
   function _loadDeviceState() {
@@ -94,6 +98,9 @@ const Store = (() => {
     });
     account.income.push(...device.income);
     account.expenses.push(...device.expenses);
+    account.challenges.push(...device.challenges);
+    // the account's own rules win if both learned the same word
+    account.categoryRules = { ...device.categoryRules, ...account.categoryRules };
     return account;
   }
 
@@ -235,6 +242,11 @@ const Store = (() => {
     removeEnvelope(id) {
       state.envelopes = state.envelopes.filter(e => e.id !== id);
       state.expenses = state.expenses.filter(x => x.envelopeId !== id);
+      // challenges and learned rules for that category go with it
+      state.challenges = state.challenges.filter(c => c.envelopeId !== id);
+      Object.keys(state.categoryRules).forEach(word => {
+        if (state.categoryRules[word] === id) delete state.categoryRules[word];
+      });
       _save();
     },
     updateEnvelope(id, item) {
@@ -252,6 +264,23 @@ const Store = (() => {
     },
     updateExpense(id, item) {
       state.expenses = state.expenses.map(x => x.id === id ? { ...x, ...item } : x);
+      _save();
+    },
+
+    // Remembers which category a store's expenses go in ("chipotle" → Food)
+    setCategoryRule(word, envelopeId) {
+      // runs on every expense save, so skip the Drive upload if nothing changed
+      if (state.categoryRules[word] === envelopeId) return;
+      state.categoryRules[word] = envelopeId;
+      _save();
+    },
+
+    addChallenge(item) {
+      state.challenges.push({ id: crypto.randomUUID(), ...item });
+      _save();
+    },
+    updateChallenge(id, item) {
+      state.challenges = state.challenges.map(c => c.id === id ? { ...c, ...item } : c);
       _save();
     },
   };

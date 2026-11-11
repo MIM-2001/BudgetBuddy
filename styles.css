@@ -10,6 +10,7 @@
   --blue-deep: #0B5A96;
   --sky: #8FD3FF;
   --warn: #E0A62A;
+  --warn-text: #8A5A00;
   --danger: #FF5A73;
   --danger-text: #C8243F;
   --radius: 14px;
@@ -19,7 +20,6 @@
   --field-bg: #FFFFFF;
   --bar-bg: rgba(255, 255, 255, 0.96);
   --backdrop: rgba(30, 42, 56, 0.45);
-  --switch-off: #B8C2CC;
   --tag-loan-bg: #F5D9A8;
   --tag-loan-ink: #6B4A16;
   --tag-family-bg: #BFE3C4;
@@ -54,13 +54,13 @@
     --blue-deep: #8CC8F2;
     --sky: rgba(143, 211, 255, 0.16);
     --danger-text: #FF8095;
+    --warn-text: #F2C46B;
     --blue-text: #6DB5EA;
     --hero-edge: #1173B5;
     --sheet-bg: #182430;
     --field-bg: #0F1720;
     --bar-bg: rgba(15, 23, 32, 0.94);
     --backdrop: rgba(0, 0, 0, 0.6);
-    --switch-off: #3A4A5A;
     --tag-loan-bg: rgba(245, 217, 168, 0.16);
     --tag-loan-ink: #F2CF93;
     --tag-family-bg: rgba(191, 227, 196, 0.16);
@@ -88,13 +88,13 @@
   --blue-deep: #8CC8F2;
   --sky: rgba(143, 211, 255, 0.16);
   --danger-text: #FF8095;
+  --warn-text: #F2C46B;
   --blue-text: #6DB5EA;
   --hero-edge: #1173B5;
   --sheet-bg: #182430;
   --field-bg: #0F1720;
   --bar-bg: rgba(15, 23, 32, 0.94);
   --backdrop: rgba(0, 0, 0, 0.6);
-  --switch-off: #3A4A5A;
   --tag-loan-bg: rgba(245, 217, 168, 0.16);
   --tag-loan-ink: #F2CF93;
   --tag-family-bg: rgba(191, 227, 196, 0.16);
@@ -200,6 +200,27 @@ header.top {
   transition: width 0.4s ease;
 }
 .hero-bar-fill.over { background: var(--danger); }
+/* "Can I afford this?" sits right under the number it checks against */
+.hero-btn {
+  display: block;
+  width: 100%;
+  min-height: 46px;
+  margin-top: 18px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+  font-family: inherit;
+  font-size: 14.5px;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.hero-btn:active { background: rgba(255, 255, 255, 0.24); }
+.hero-btn:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+@media (min-width: 600px) {
+  .hero-btn { display: inline-block; width: auto; padding: 0 22px; }
+}
 
 /* ---------- Section shell ---------- */
 section.block {
@@ -591,16 +612,6 @@ input:focus, select:focus, .btn:focus-visible, .btn-text:focus-visible {
 .field-stack { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
 .field-error { margin-top: 5px; font-size: 12.5px; color: var(--danger-text); }
 .field-error:empty { display: none; }
-.soon-tag {
-  margin-left: 6px;
-  padding: 2px 8px;
-  border-radius: 99px;
-  background: var(--surface-dim);
-  color: var(--ink-soft);
-  font-size: 11px;
-  font-weight: 600;
-  vertical-align: 2px;
-}
 .settings-sub-tight { margin: 8px 0 0; font-size: 12.5px; }
 
 /* Light / Dark / System: radios dressed as one segmented control */
@@ -634,57 +645,6 @@ input:focus, select:focus, .btn:focus-visible, .btn-text:focus-visible {
 }
 .segmented input:checked + span { background: var(--blue); color: #fff; }
 .segmented input:focus-visible + span { outline: 2px solid var(--blue); outline-offset: 2px; }
-
-/* A whole row toggles its switch */
-.switch-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  min-height: 56px;
-  margin: 0;
-  padding: 8px 0;
-  font-size: 14.5px;
-  font-weight: 500;
-  color: var(--ink);
-  cursor: pointer;
-}
-.switch-row + .switch-row { border-top: 1px solid var(--line); }
-.switch-sub { display: block; margin-top: 2px; font-size: 12.5px; font-weight: 400; color: var(--ink-soft); }
-input[role="switch"] {
-  -webkit-appearance: none;
-  appearance: none;
-  position: relative;
-  flex-shrink: 0;
-  width: 48px;
-  height: 28px;
-  margin: 0;
-  padding: 0;
-  border: none;
-  border-radius: 14px;
-  background: var(--switch-off);
-  cursor: pointer;
-  transition: background 0.15s ease;
-}
-input[role="switch"]::before {
-  content: "";
-  position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
-  transition: transform 0.15s ease;
-}
-input[role="switch"]:checked { background: var(--blue); }
-input[role="switch"]:checked::before { transform: translateX(20px); }
-input[role="switch"]:focus { outline: none; }
-input[role="switch"]:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
-@media (prefers-reduced-motion: reduce) {
-  input[role="switch"], input[role="switch"]::before { transition: none; }
-}
 
 .settings-sub {
   font-size: 13.5px;
@@ -853,6 +813,73 @@ html:has(.sheet[open]) { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) {
   .sheet[open] { animation: none; }
 }
+
+/* ---------- Smart calendar ----------
+   FullCalendar (calendar.js) brings its own CSS. These lines swap its
+   colors for the app's, so it matches in light and dark mode, and shrink
+   its toolbar to fit a phone. */
+.cal-panel { padding: 12px 8px; }
+#calendar {
+  --fc-border-color: var(--line);
+  --fc-page-bg-color: var(--surface);
+  --fc-neutral-bg-color: var(--surface-dim);
+  --fc-today-bg-color: rgba(17, 115, 181, 0.12);
+  --fc-button-text-color: #fff;
+  --fc-button-bg-color: var(--blue);
+  --fc-button-border-color: var(--blue);
+  --fc-button-hover-bg-color: var(--hero-edge);
+  --fc-button-hover-border-color: var(--hero-edge);
+  --fc-button-active-bg-color: var(--hero-edge);
+  --fc-button-active-border-color: var(--hero-edge);
+  --fc-event-text-color: #fff;
+  --fc-small-font-size: 11px;
+  font-size: 12px;
+}
+#calendar a { color: inherit; text-decoration: none; }
+#calendar .fc-toolbar.fc-header-toolbar { margin-bottom: 10px; gap: 8px; }
+#calendar .fc-toolbar-title { font-family: 'Fraunces', serif; font-size: 17px; font-weight: 600; }
+/* 44px tall buttons for thumbs */
+#calendar .fc-button { min-height: 44px; min-width: 44px; padding: 0 10px; font-size: 13px; }
+#calendar .fc-button:disabled { opacity: 0.5; }
+#calendar .fc-col-header-cell-cushion { padding: 6px 0; font-size: 11px; font-weight: 600; color: var(--ink-soft); }
+#calendar .fc-daygrid-day-number { padding: 4px 5px; font-weight: 600; }
+#calendar .fc-daygrid-event { font-size: 10.5px; border-radius: 4px; }
+/* Day columns are only ~45px wide on a phone, so let event titles wrap
+   instead of cutting off the amount at the end. */
+#calendar .fc-daygrid-block-event .fc-event-title {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.2;
+}
+#calendar .fc-daygrid-more-link { font-size: 10.5px; color: var(--blue-text); }
+#calendar .fc-popover { background: var(--sheet-bg); color: var(--ink); }
+
+/* ---------- Can I afford this? (affordability.js) ---------- */
+.afford-result {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+.afford-result:empty { display: none; }
+.afford-result .row-meta { margin: 0; font-size: 13.5px; line-height: 1.5; }
+.afford-result b { color: var(--ink); }
+.afford-result .btn-text { align-self: flex-start; min-height: 44px; padding: 0; font-size: 14px; text-align: left; }
+/* "Challenge started!" is a confirmation now, not a link */
+.afford-result .btn-text:disabled { opacity: 1; color: var(--ink); text-decoration: none; cursor: default; }
+.afford { font-family: 'Fraunces', serif; font-weight: 600; font-size: 20px; }
+.afford.yes { color: var(--blue-text); }
+.afford.tight { color: var(--warn-text); }
+.afford.no { color: var(--danger-text); }
+
+/* ---------- Challenges (challenges.js) ---------- */
+#challengeList .envelope .row-meta { margin-top: 6px; }
+/* "Start" is a text button, so give it a finger-sized hit area */
+#challengeList .btn-text { flex-shrink: 0; min-width: 44px; min-height: 44px; padding: 0 4px; font-size: 14px; }
 
 .empty {
   padding: 24px 0;
