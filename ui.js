@@ -40,6 +40,31 @@ function daysLeftInMonth() {
   return Math.max(1, end.getDate() - now.getDate() + 1);
 }
 
+function daysInMonth(date) {
+  return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+}
+
+function startOfToday() {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+}
+
+// What's left this month once spending and the bills still to come are
+// taken out (totalUnpaidBills is in affordability.js). The hero uses this.
+function moneyLeftThisMonth() {
+  return totalMonthlyIncome() - totalSpent() - totalUnpaidBills();
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+// Total spent in one category between two dates (both included)
+function spentBetween(envelopeId, from, to) {
+  return Store.getState().expenses
+    .filter(x => x.envelopeId === envelopeId)
+    .filter(x => new Date(x.date) >= from && new Date(x.date) <= to)
+    .reduce((sum, x) => sum + x.amount, 0);
+}
+
 function money(n) {
   const sign = n < 0 ? '-' : '';
   return sign + '$' + Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
@@ -49,6 +74,16 @@ function money(n) {
    CHART DATA
    ========================================================================= */
 const INCOME_TYPE_COLOR_INDEX = { aid: 0, loan: 1, family: 2, job: 3 };
+
+function envelopeById(envelopeId) {
+  return Store.getState().envelopes.find(e => e.id === envelopeId);
+}
+
+// A category's chart color, so the calendar matches the spending chart
+function envelopeColor(envelopeId) {
+  const env = envelopeById(envelopeId);
+  return env ? paletteColor(env.colorIndex) : CHART_OTHER_COLOR;
+}
 
 function spendingByCategorySegments() {
   const state = Store.getState();
@@ -147,7 +182,8 @@ function render() {
   const state = Store.getState();
   const monthlyIncome = totalMonthlyIncome();
   const spent = totalSpent();
-  const remaining = monthlyIncome - spent;
+  const bills = totalUnpaidBills();
+  const remaining = moneyLeftThisMonth();
   const days = daysLeftInMonth();
   const safeToday = remaining / days;
 
@@ -157,10 +193,14 @@ function render() {
   heroNum.classList.toggle('over', safeToday < 0);
   document.getElementById('heroRemaining').textContent = money(remaining);
   document.getElementById('heroDays').textContent = days;
-  const pct = monthlyIncome > 0 ? Math.min(100, (spent / monthlyIncome) * 100) : 0;
+  document.getElementById('heroBills').textContent = money(bills);
+  document.getElementById('heroBillsWrap').hidden = bills <= 0;
+  // money set aside for bills counts as used, same as money spent
+  const used = spent + bills;
+  const pct = monthlyIncome > 0 ? Math.min(100, (used / monthlyIncome) * 100) : 0;
   const heroBar = document.getElementById('heroBar');
   heroBar.style.width = pct + '%';
-  heroBar.classList.toggle('over', spent > monthlyIncome);
+  heroBar.classList.toggle('over', used > monthlyIncome);
 
   // Charts
   renderDonut(document.getElementById('categoryChart'), spendingByCategorySegments(), {
@@ -284,6 +324,16 @@ function render() {
       expList.appendChild(expenseRow(x, state.envelopes));
     });
   });
+
+  renderFeatures();
+}
+
+// The feature sections, each drawn by its own file
+function renderFeatures() {
+  renderCalendar();         // calendar.js
+  renderAffordCategories(); // affordability.js
+  updateChallenges();       // challenges.js: mark finished ones won or lost
+  renderChallenges();       // challenges.js
 }
 
 /* =========================================================================
@@ -364,6 +414,7 @@ function saveExpense() {
   const envelopeId = document.getElementById('expCategory').value;
   if (!name || !amount || amount <= 0 || !envelopeId) return false;
   const item = { name, amount, envelopeId };
+  learnCategory(name, envelopeId); // calendar.js: guess this category next time
   if (editingExpId) {
     Store.updateExpense(editingExpId, item);
   } else {
@@ -524,9 +575,8 @@ addDialog.addEventListener('close', () => {
    PROFILE
    The avatar at the bottom left opens the Profile page. Photo, name,
    username and email are a draft until "Save changes" (closing drops it);
-   the theme and alert switches apply as soon as they're flipped. All of
-   it but the theme is saved with the budget, so it follows the user to
-   Drive.
+   the theme applies as soon as it's picked. All of it but the theme is
+   saved with the budget, so it follows the user to Drive.
    ========================================================================= */
 const profileDialog = document.getElementById('profileDialog');
 const saveProfileBtn = document.getElementById('saveProfile');
@@ -636,7 +686,6 @@ function saveProfile() {
   renderBarAvatar();
   renderGreeting();
   syncProfileForm();
-  syncAlertsUI();
 }
 
 // Center-crops to a square and shrinks it, so a full-size phone photo
@@ -721,26 +770,6 @@ document.getElementById('themeChoice').addEventListener('change', (e) => {
   else document.documentElement.dataset.theme = theme;
 });
 
-// Nothing sends these yet; the choices are saved so they're ready when
-// email sending is switched on.
-const alertGoalMet = document.getElementById('alertGoalMet');
-const alertRecurring = document.getElementById('alertRecurring');
-
-function syncAlertsUI() {
-  const { email, alerts } = Store.getState().profile;
-  alertGoalMet.checked = alerts.goalMet;
-  alertRecurring.checked = alerts.recurring;
-  document.getElementById('alertsNote').textContent = email
-    ? `Alerts will be sent to ${email}.`
-    : 'Add your email above so alerts have somewhere to go.';
-}
-
-function saveAlerts() {
-  Store.updateProfile({ alerts: { goalMet: alertGoalMet.checked, recurring: alertRecurring.checked } });
-}
-alertGoalMet.addEventListener('change', saveAlerts);
-alertRecurring.addEventListener('change', saveAlerts);
-
 // Every open starts from what's saved, so closing without saving drops
 // the draft.
 function openProfile() {
@@ -751,7 +780,6 @@ function openProfile() {
   ['photoError', 'usernameError', 'emailError'].forEach(id => setFieldError(id, ''));
   syncProfileForm();
   syncThemeUI();
-  syncAlertsUI();
   profileDialog.showModal();
   profileDialog.scrollTop = 0;
 }
@@ -819,7 +847,3 @@ document.getElementById('signOutBtn').addEventListener('click', () => {
   syncAccountUI();
   render();
 });
-
-Store.loadDevice();
-syncAccountUI();
-render();
