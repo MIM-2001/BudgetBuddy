@@ -623,21 +623,15 @@ addDialog.addEventListener('close', () => {
 
 /* =========================================================================
    PROFILE
-   The avatar at the bottom left opens the Profile page. Photo, name,
-   username and email are a draft until "Save changes" (closing drops it);
-   the theme applies as soon as it's picked. All of it but the theme is
-   saved with the budget, so it follows the user to Drive.
+   The avatar at the bottom left opens the Profile page. Photo and name
+   are a draft until "Save changes" (closing drops it); the theme applies
+   as soon as it's picked. Photo and name are saved with the budget, so
+   they follow the user to Drive.
    ========================================================================= */
 const profileDialog = document.getElementById('profileDialog');
 const saveProfileBtn = document.getElementById('saveProfile');
 const photoInput = document.getElementById('photoInput');
-const profileInputs = {
-  name: document.getElementById('profileName'),
-  username: document.getElementById('profileUsername'),
-  email: document.getElementById('profileEmail'),
-};
-const FIELD_ERRORS = { username: 'usernameError', email: 'emailError' };
-const USERNAME_PATTERN = /^[A-Za-z0-9._]{3,30}$/;
+const profileNameInput = document.getElementById('profileName');
 const PHOTO_SIZE = 160; // px square: about 10 KB as a JPEG, shown at up to 80px
 
 let draftPhoto = '';
@@ -659,18 +653,17 @@ function initials(text) {
   return (first + last).toUpperCase();
 }
 
-// The photo if there is one, else initials from the name (or the
-// username), else a plain person icon.
+// The photo if there is one, else initials from the name, else a plain
+// person icon.
 function renderAvatar(el, profile) {
-  const label = profile.name || profile.username;
-  el.classList.toggle('avatar-empty', !profile.photo && !label);
+  el.classList.toggle('avatar-empty', !profile.photo && !profile.name);
   if (profile.photo) {
     const img = document.createElement('img');
     img.src = profile.photo;
     img.alt = '';
     el.replaceChildren(img);
-  } else if (label) {
-    el.textContent = initials(label);
+  } else if (profile.name) {
+    el.textContent = initials(profile.name);
   } else {
     el.innerHTML = PERSON_ICON;
   }
@@ -680,12 +673,12 @@ function renderBarAvatar() {
   renderAvatar(document.getElementById('barAvatar'), Store.getState().profile);
 }
 
-// Signed in, the header greets the user by first name (or username, if
-// there's no name) in place of the app name.
+// Signed in, the header greets the user by first name in place of the
+// app name.
 function renderGreeting() {
-  const { name, username } = Store.getState().profile;
+  const { name } = Store.getState().profile;
   const signedIn = Store.isDriveConnected();
-  const who = name.split(' ')[0] || username;
+  const who = name.split(' ')[0];
   const wordmark = document.getElementById('wordmark');
   wordmark.classList.toggle('greeting', signedIn);
   wordmark.textContent = !signedIn ? 'BudgetBuddy'
@@ -694,9 +687,7 @@ function renderGreeting() {
 
 function readProfileForm() {
   return {
-    name: cleanName(profileInputs.name.value),
-    username: profileInputs.username.value.trim(),
-    email: profileInputs.email.value.trim(),
+    name: cleanName(profileNameInput.value),
     photo: draftPhoto,
   };
 }
@@ -718,20 +709,9 @@ function setFieldError(id, text) {
   document.getElementById(id).textContent = text;
 }
 
-// Shows what's wrong under each field; true when the draft can be saved.
-function validateProfile(draft) {
-  const usernameOk = !draft.username || USERNAME_PATTERN.test(draft.username);
-  const emailOk = !draft.email || profileInputs.email.checkValidity();
-  setFieldError('usernameError', usernameOk ? '' : 'Use 3–30 letters, numbers, periods or underscores.');
-  setFieldError('emailError', emailOk ? '' : 'Enter an email like you@example.com.');
-  return usernameOk && emailOk;
-}
-
 function saveProfile() {
   if (saveProfileBtn.disabled) return;
-  const draft = readProfileForm();
-  if (!validateProfile(draft)) return;
-  Store.updateProfile(draft);
+  Store.updateProfile(readProfileForm());
   profileJustSaved = true;
   renderBarAvatar();
   renderGreeting();
@@ -786,21 +766,13 @@ document.getElementById('removePhoto').addEventListener('click', () => {
   syncProfileForm();
 });
 
-// Enter moves down the fields and saves from the last one. preventDefault
-// keeps that same key press from also "clicking" whatever has focus next.
-const profileFieldOrder = [profileInputs.name, profileInputs.username, profileInputs.email];
-Object.entries(profileInputs).forEach(([key, input]) => {
-  input.addEventListener('input', () => {
-    if (FIELD_ERRORS[key]) setFieldError(FIELD_ERRORS[key], '');
-    syncProfileForm();
-  });
-  input.addEventListener('keydown', (e) => {
-    if (e.key !== 'Enter') return;
-    e.preventDefault();
-    const next = profileFieldOrder[profileFieldOrder.indexOf(input) + 1];
-    if (next) next.focus();
-    else saveProfile();
-  });
+// Enter in the name field saves. preventDefault keeps that same key press
+// from also "clicking" whatever has focus next.
+profileNameInput.addEventListener('input', syncProfileForm);
+profileNameInput.addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  saveProfile();
 });
 saveProfileBtn.addEventListener('click', saveProfile);
 
@@ -824,10 +796,10 @@ document.getElementById('themeChoice').addEventListener('change', (e) => {
 // the draft.
 function openProfile() {
   const saved = Store.getState().profile;
-  Object.entries(profileInputs).forEach(([key, input]) => { input.value = saved[key]; });
+  profileNameInput.value = saved.name;
   draftPhoto = saved.photo;
   profileJustSaved = false;
-  ['photoError', 'usernameError', 'emailError'].forEach(id => setFieldError(id, ''));
+  setFieldError('photoError', '');
   syncProfileForm();
   syncThemeUI();
   profileDialog.showModal();
@@ -849,9 +821,6 @@ function syncAccountUI() {
   const connected = Store.isDriveConnected();
   document.getElementById('signInBtn').hidden = connected;
   document.getElementById('signOutBtn').hidden = !connected;
-  document.getElementById('accountStatus').textContent = connected
-    ? "You're signed in. Your budget saves to your own Google Drive and follows you to any device. Signing out removes it from this screen — it stays safe in your Drive."
-    : 'Your budget is only saved on this device. Sign in to back it up to your own Google Drive and use it on any device — anything you\'ve already entered comes with you.';
   document.getElementById('reconnectBanner').hidden = connected || !Store.wasDriveConnected();
   document.getElementById('syncStatus').classList.toggle('synced', connected);
   document.getElementById('syncText').textContent = connected

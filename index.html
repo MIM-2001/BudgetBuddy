@@ -146,8 +146,8 @@
       <button class="sheet-close" id="closeProfile" type="button" aria-label="Close">×</button>
     </div>
 
-    <!-- Photo, name, username and email are edited together and saved with
-         one button; the Appearance choice further down applies straight away. -->
+    <!-- Photo and name are edited together and saved with one button; the
+         Appearance choice further down applies straight away. -->
     <div class="profile-photo">
       <span class="avatar avatar-xl" id="profileAvatar" aria-hidden="true"></span>
       <div class="profile-photo-actions">
@@ -161,17 +161,7 @@
     <div class="field-stack">
       <div class="field">
         <label for="profileName">Name</label>
-        <input type="text" id="profileName" placeholder="Your name" maxlength="50" autocomplete="name" enterkeyhint="next">
-      </div>
-      <div class="field">
-        <label for="profileUsername">Username</label>
-        <input type="text" id="profileUsername" placeholder="e.g. gio_saves" maxlength="30" autocomplete="username" autocapitalize="off" spellcheck="false" enterkeyhint="next" aria-describedby="usernameError">
-        <div class="field-error" id="usernameError"></div>
-      </div>
-      <div class="field">
-        <label for="profileEmail">Email</label>
-        <input type="email" id="profileEmail" placeholder="you@example.com" maxlength="254" autocomplete="email" inputmode="email" autocapitalize="off" spellcheck="false" enterkeyhint="done" aria-describedby="emailError">
-        <div class="field-error" id="emailError"></div>
+        <input type="text" id="profileName" placeholder="Your name" maxlength="50" autocomplete="name" enterkeyhint="done">
       </div>
     </div>
     <button class="btn btn-primary btn-block" id="saveProfile" type="button" disabled>Save changes</button>
@@ -187,8 +177,6 @@
     </div>
 
     <div class="settings-section">
-      <div class="settings-label">Google Drive backup</div>
-      <div class="settings-sub" id="accountStatus"></div>
       <button class="btn btn-primary btn-block" id="signInBtn" data-sign-in>Sign in with Google</button>
       <button class="btn btn-ghost btn-block" id="signOutBtn" hidden>Sign out</button>
       <div class="signin-status" data-sign-in-status></div>

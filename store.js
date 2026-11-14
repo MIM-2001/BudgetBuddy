@@ -34,7 +34,7 @@ const Store = (() => {
   // rather than in the budget so the right theme paints before anything
   // loads — the inline script in index.html's <head> reads this same key.
   const THEME_KEY = 'budgetbuddy_theme';
-  const PROFILE_FIELDS = ['name', 'username', 'email', 'photo'];
+  const PROFILE_FIELDS = ['name', 'photo'];
 
   let state = _normalize({});
   let _accessToken = null;
@@ -43,10 +43,12 @@ const Store = (() => {
   function _normalize(loaded) {
     const profile = loaded.profile || {};
     return {
-      // photo is a small JPEG data URL, so it travels inside this same file
+      // photo is a small JPEG data URL, so it travels inside this same file.
+      // Only these two are kept: the username and email the Profile page
+      // used to ask for are dropped the next time the budget saves.
       profile: {
-        name: '', username: '', email: '', photo: '',
-        ...profile,
+        name: profile.name || '',
+        photo: profile.photo || '',
       },
       income: loaded.income || [],
       envelopes: loaded.envelopes || [],
