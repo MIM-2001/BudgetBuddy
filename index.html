@@ -233,6 +233,23 @@
         Every expense goes in a budget category, so add one first.
         <button type="button" class="btn-text" id="switchToCategory">Add a category</button>
       </div>
+      <!-- Every month: rent, car payment, insurance, subscriptions (calendar.js) -->
+      <div class="field-row">
+        <div class="field">
+          <div class="field-label" id="expRepeatLabel">How often</div>
+          <div class="segmented segmented-field" id="expRepeat" role="radiogroup" aria-labelledby="expRepeatLabel">
+            <label><input type="radio" name="expRepeat" value="once" checked><span>One time</span></label>
+            <label><input type="radio" name="expRepeat" value="monthly"><span>Every month</span></label>
+          </div>
+        </div>
+        <div class="field field-day" id="expDayField" hidden>
+          <label for="expDay">Day it's due</label>
+          <input type="number" id="expDay" placeholder="1" min="1" max="31" step="1" inputmode="numeric">
+        </div>
+      </div>
+      <div class="field-hint" id="expRepeatHint" hidden>
+        Logs itself on this day every month and shows on your calendar. Pick One time to stop it.
+      </div>
     </div>
 
     <div data-add-fields="income" hidden>

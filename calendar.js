@@ -5,8 +5,11 @@
 
    Key points:
    - Every expense shows on the day it was logged, in its category's color.
-   - Bills that repeat every month (rent, Spotify...) show as upcoming
-     "Bill:" events on the days they're due.
+   - Expenses marked "Every month" when they're added (rent, car payment,
+     insurance, subscriptions) log themselves on their day each month, and
+     show as upcoming "Bill:" events on that day in every month ahead.
+   - Other bills that repeat (rent, Spotify...) are spotted on their own
+     and show as upcoming "Bill:" events this month and next.
    - When the user types an expense name, we guess the category for them.
    - When they save an expense, we remember the category they picked so
      the guess is right next time.
@@ -78,7 +81,11 @@ function learnCategory(expenseName, envelopeId) {
  * @returns {Array} bills like { name, amount, day, envelopeId }
  */
 function findRecurringBills() {
-  const expenses = Store.getState().expenses;
+  // Expenses marked "Every month" have their own bills (see below), so
+  // leave them out here, or they'd show up twice.
+  const expenses = Store.getState().expenses.filter(function (expense) {
+    return !expense.recurringId && !isRecurringName(expense.name);
+  });
   const bills = [];
 
   for (const expense of expenses) {
@@ -139,7 +146,186 @@ function unpaidBillsThisMonth() {
   for (const bill of findRecurringBills()) {
     if (!isPaidThisMonth(bill)) unpaid.push(bill);
   }
+  // "Every month" expenses whose day hasn't come yet this month
+  const thisMonth = monthKey(new Date());
+  for (const bill of Store.getState().recurring) {
+    if (bill.loggedThrough < thisMonth) unpaid.push(bill);
+  }
   return unpaid;
+}
+
+/* ---- Expenses marked "Every month" ----
+   Each one is saved as a "recurring" item: { name, amount, envelopeId,
+   day, loggedThrough }. day is the day of the month it's due, and
+   loggedThrough is the last month ('YYYY-MM') it was logged in. The
+   expenses it logs carry its id as recurringId. */
+
+/**
+ * The date a monthly bill falls on in a given month. A bill due on the
+ * 31st falls on the last day of shorter months. Noon, so a time zone
+ * change can't push it onto the day before.
+ * @param {number} year
+ * @param {number} month 0 = January (13 rolls over to next February)
+ * @param {number} day 1 to 31
+ * @returns {Date}
+ */
+function dueDateIn(year, month, day) {
+  const lastDay = new Date(year, month + 1, 0).getDate();
+  return new Date(year, month, Math.min(day, lastDay), 12);
+}
+
+/**
+ * @param {string} id a recurringId from an expense
+ * @returns {object|null} the recurring item, or null if it was stopped
+ */
+function findRecurring(id) {
+  if (!id) return null;
+  return Store.getState().recurring.find(bill => bill.id === id) || null;
+}
+
+/**
+ * Is there an "Every month" expense with this name?
+ * @param {string} name
+ * @returns {boolean}
+ */
+function isRecurringName(name) {
+  const lower = name.toLowerCase().trim();
+  for (const bill of Store.getState().recurring) {
+    if (bill.name.toLowerCase().trim() === lower) return true;
+  }
+  return false;
+}
+
+/**
+ * Did the user log this bill themselves in that month? Then it doesn't
+ * get logged a second time.
+ * @param {object} bill a recurring item
+ * @param {string} month 'YYYY-MM'
+ * @returns {boolean}
+ */
+function loggedByHand(bill, month) {
+  const name = bill.name.toLowerCase().trim();
+  for (const expense of Store.getState().expenses) {
+    if (expense.recurringId) continue; // logged by a repeat, not by hand
+    const sameName = expense.name.toLowerCase().trim() === name;
+    if (sameName && monthKey(new Date(expense.date)) === month) return true;
+  }
+  return false;
+}
+
+/**
+ * Logs each "Every month" expense once its day comes, for every month
+ * since it was last logged, so a month the app wasn't opened still gets
+ * its rent. Called at the start of render(), before any totals.
+ */
+function logDueRecurring() {
+  const today = startOfToday();
+  const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+
+  for (const bill of Store.getState().recurring) {
+    const parts = String(bill.loggedThrough).split('-');
+    const year = Number(parts[0]);
+    // 'YYYY-MM' counts months from 1 but Date counts from 0, so this is
+    // already the month after the last one logged.
+    let month = Number(parts[1]);
+    const dates = [];
+    let lastMonth = null;
+
+    while (true) {
+      const due = dueDateIn(year, month, bill.day);
+      if (isNaN(due) || due >= tomorrow) break; // not due yet
+      const key = monthKey(due);
+      if (!loggedByHand(bill, key)) dates.push(due.toISOString());
+      lastMonth = key;
+      month++;
+    }
+
+    if (lastMonth) Store.logRecurring(bill.id, dates, lastMonth);
+  }
+}
+
+/**
+ * Adds an expense that repeats every month. This month's goes on its day,
+ * even if that's later this month; logDueRecurring() adds the rest.
+ * Called from saveExpense() in ui.js.
+ * @param {object} item { name, amount, envelopeId } from the form
+ * @param {number} day the day of the month it's due
+ */
+function addRecurringExpense(item, day) {
+  const now = new Date();
+  const due = dueDateIn(now.getFullYear(), now.getMonth(), day);
+  const id = Store.addRecurring({ ...item, day: day, loggedThrough: monthKey(now) });
+  Store.addExpense({ ...item, date: due.toISOString(), recurringId: id });
+}
+
+/**
+ * Saves an edited expense and starts, changes or stops its repeat to
+ * match the form. Called from saveExpense() in ui.js.
+ * @param {string} expenseId
+ * @param {object} item { name, amount, envelopeId } from the form
+ * @param {number|null} day the day it repeats on, or null for "One time"
+ */
+function saveExpenseEdit(expenseId, item, day) {
+  const expense = Store.getState().expenses.find(x => x.id === expenseId);
+  if (!expense) return;
+  const bill = findRecurring(expense.recurringId);
+
+  // One time: stop repeating. Months already logged keep their expenses.
+  if (day === null) {
+    Store.updateExpense(expenseId, item);
+    if (bill) Store.removeRecurring(bill.id);
+    return;
+  }
+
+  // Every month: this expense moves onto that day in its own month
+  const old = new Date(expense.date);
+  const due = dueDateIn(old.getFullYear(), old.getMonth(), day);
+  const changes = { ...item };
+  if (due.getDate() !== old.getDate()) changes.date = due.toISOString();
+
+  if (bill) {
+    Store.updateRecurring(bill.id, { ...item, day: day });
+  } else {
+    // Repeats from the month after this one. Any months in between get
+    // logged too, unless the user already logged them by hand.
+    changes.recurringId = Store.addRecurring({ ...item, day: day, loggedThrough: monthKey(old) });
+  }
+  Store.updateExpense(expenseId, changes);
+}
+
+/**
+ * The upcoming days of "Every month" expenses, for FullCalendar. It calls
+ * this with the dates on screen each time the user pages to another
+ * month, so they show on their day however far ahead the user looks.
+ * @param {object} info FullCalendar's { start, end } of the dates on screen
+ * @param {function} done hands the events back to FullCalendar
+ */
+function recurringBillEvents(info, done) {
+  const events = [];
+
+  for (const bill of Store.getState().recurring) {
+    // If a category chip is selected under "Your spending", only show that one
+    if (expenseFilter && bill.envelopeId !== expenseFilter) continue;
+
+    // Every month on screen, from the one the first square is in
+    let month = new Date(info.start.getFullYear(), info.start.getMonth(), 1);
+    while (month < info.end) {
+      const due = dueDateIn(month.getFullYear(), month.getMonth(), bill.day);
+      const logged = monthKey(due) <= bill.loggedThrough; // shows as an expense instead
+      const onScreen = due >= info.start && due < info.end;
+      if (!logged && onScreen) {
+        events.push({
+          title: 'Bill: ' + bill.name + ' ' + money(bill.amount),
+          start: due,
+          allDay: true,
+          color: '#9e9e9e',
+        });
+      }
+      month = new Date(month.getFullYear(), month.getMonth() + 1, 1);
+    }
+  }
+
+  done(events);
 }
 
 /**
@@ -214,6 +400,7 @@ function renderCalendar() {
   // would leave an empty source behind on every render.)
   calendar.getEventSources().forEach(source => source.remove());
   calendar.addEventSource(buildCalendarEvents());
+  calendar.addEventSource(recurringBillEvents); // asked again for each month paged to
 }
 
 /* ---- Auto-pick the category while typing an expense ---- */
