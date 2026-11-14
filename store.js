@@ -55,6 +55,8 @@ const Store = (() => {
       categoryRules: loaded.categoryRules || {},
       // challenges saved by the first draft of this feature had no status; skip them
       challenges: (loaded.challenges || []).filter(c => c.status),
+      // expenses that repeat every month (calendar.js), see addRecurring
+      recurring: loaded.recurring || [],
       envelopeColorSeq: typeof loaded.envelopeColorSeq === 'number'
         ? loaded.envelopeColorSeq
         : (loaded.envelopes ? loaded.envelopes.length : 0),
@@ -64,7 +66,7 @@ const Store = (() => {
   function _isEmpty(s) {
     return !PROFILE_FIELDS.some(k => s.profile[k])
       && !s.income.length && !s.envelopes.length && !s.expenses.length
-      && !s.challenges.length;
+      && !s.challenges.length && !s.recurring.length;
   }
 
   function _loadDeviceState() {
@@ -99,6 +101,7 @@ const Store = (() => {
     account.income.push(...device.income);
     account.expenses.push(...device.expenses);
     account.challenges.push(...device.challenges);
+    account.recurring.push(...device.recurring);
     // the account's own rules win if both learned the same word
     account.categoryRules = { ...device.categoryRules, ...account.categoryRules };
     return account;
@@ -242,8 +245,9 @@ const Store = (() => {
     removeEnvelope(id) {
       state.envelopes = state.envelopes.filter(e => e.id !== id);
       state.expenses = state.expenses.filter(x => x.envelopeId !== id);
-      // challenges and learned rules for that category go with it
+      // challenges, repeats and learned rules for that category go with it
       state.challenges = state.challenges.filter(c => c.envelopeId !== id);
+      state.recurring = state.recurring.filter(r => r.envelopeId !== id);
       Object.keys(state.categoryRules).forEach(word => {
         if (state.categoryRules[word] === id) delete state.categoryRules[word];
       });
@@ -259,7 +263,14 @@ const Store = (() => {
       _save();
     },
     removeExpense(id) {
+      const removed = state.expenses.find(x => x.id === id);
       state.expenses = state.expenses.filter(x => x.id !== id);
+      // A repeat lasts while it has an expense left to edit it from, so
+      // deleting one added by mistake doesn't leave it logging on unseen.
+      const repeatId = removed && removed.recurringId;
+      if (repeatId && !state.expenses.some(x => x.recurringId === repeatId)) {
+        state.recurring = state.recurring.filter(r => r.id !== repeatId);
+      }
       _save();
     },
     updateExpense(id, item) {
@@ -273,6 +284,37 @@ const Store = (() => {
       if (state.categoryRules[word] === envelopeId) return;
       state.categoryRules[word] = envelopeId;
       _save();
+    },
+
+    // A repeat is { name, amount, envelopeId, day, loggedThrough }: the
+    // expense, the day of the month it's due, and the last month ('YYYY-MM')
+    // already logged, so deleting one month's copy never brings it back.
+    // The expenses it logs carry its id as recurringId.
+    addRecurring(item) {
+      const id = crypto.randomUUID();
+      state.recurring.push({ id, ...item });
+      _save();
+      return id;
+    },
+    updateRecurring(id, item) {
+      state.recurring = state.recurring.map(r => r.id === id ? { ...r, ...item } : r);
+      _save();
+    },
+    // Stops it repeating; the months already logged keep their expenses.
+    removeRecurring(id) {
+      state.recurring = state.recurring.filter(r => r.id !== id);
+      _save();
+    },
+    // Logs a repeat's copies on `dates` (ISO strings), marks `month` as done
+    // and saves once, however many months it catches up.
+    logRecurring(id, dates, month) {
+      const r = state.recurring.find(x => x.id === id);
+      if (!r) return;
+      dates.forEach(date => state.expenses.push({
+        id: crypto.randomUUID(), date,
+        name: r.name, amount: r.amount, envelopeId: r.envelopeId, recurringId: id,
+      }));
+      this.updateRecurring(id, { loggedThrough: month });
     },
 
     addChallenge(item) {

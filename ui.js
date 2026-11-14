@@ -162,7 +162,7 @@ function expenseRow(x, envelopes) {
   const thumb = x.receiptThumb ? `<img class="row-thumb" src="${x.receiptThumb}" alt="Receipt">` : '';
   row.innerHTML = `
     ${thumb}
-    <span class="row-name">${x.name}<div class="row-meta">${env ? env.name : 'Uncategorized'}</div></span>
+    <span class="row-name">${x.name}<div class="row-meta">${env ? env.name : 'Uncategorized'}${findRecurring(x.recurringId) ? ' · every month' : ''}</div></span>
     <span class="row-leader"></span>
     <span class="row-amount">${money(x.amount)}</span>
     <span class="row-actions">
@@ -179,6 +179,7 @@ function expenseRow(x, envelopes) {
 const tagLabel = { aid: 'Aid', loan: 'Loan', family: 'Family', job: 'Job' };
 
 function render() {
+  logDueRecurring(); // calendar.js: log this month's rent etc. once its day comes
   const state = Store.getState();
   const monthlyIncome = totalMonthlyIncome();
   const spent = totalSpent();
@@ -371,7 +372,33 @@ function resetExpForm() {
   editingExpId = null;
   document.getElementById('expName').value = '';
   document.getElementById('expAmount').value = '';
+  setExpenseRepeat(false, '');
 }
+
+// "One time" or "Every month". Every month also asks for the day it's due.
+const expRepeatChoice = document.getElementById('expRepeat');
+const expDayInput = document.getElementById('expDay');
+
+function expenseRepeats() {
+  return expRepeatChoice.querySelector('input:checked').value === 'monthly';
+}
+
+function syncRepeatFields() {
+  document.getElementById('expDayField').hidden = !expenseRepeats();
+  document.getElementById('expRepeatHint').hidden = !expenseRepeats();
+}
+
+function setExpenseRepeat(monthly, day) {
+  expRepeatChoice.querySelector(`input[value="${monthly ? 'monthly' : 'once'}"]`).checked = true;
+  expDayInput.value = day;
+  syncRepeatFields();
+}
+
+// Picking Every month on a new expense starts it on today's date
+expRepeatChoice.addEventListener('change', () => {
+  if (expenseRepeats() && !expDayInput.value) expDayInput.value = new Date().getDate();
+  syncRepeatFields();
+});
 
 // Each save returns true once it has stored something, so the popup knows
 // it can close; invalid input returns false and leaves the popup open.
@@ -413,10 +440,15 @@ function saveExpense() {
   const amount = parseFloat(document.getElementById('expAmount').value);
   const envelopeId = document.getElementById('expCategory').value;
   if (!name || !amount || amount <= 0 || !envelopeId) return false;
+  // Every month needs the day it's due, 1 to 31
+  const day = expenseRepeats() ? Number(expDayInput.value) : null;
+  if (day !== null && !(Number.isInteger(day) && day >= 1 && day <= 31)) return false;
   const item = { name, amount, envelopeId };
   learnCategory(name, envelopeId); // calendar.js: guess this category next time
   if (editingExpId) {
-    Store.updateExpense(editingExpId, item);
+    saveExpenseEdit(editingExpId, item, day); // calendar.js: also starts, changes or stops the repeat
+  } else if (day) {
+    addRecurringExpense(item, day);           // calendar.js
   } else {
     Store.addExpense(item);
   }
@@ -453,6 +485,8 @@ function editExpense(id) {
   document.getElementById('expName').value = exp.name;
   document.getElementById('expAmount').value = exp.amount;
   document.getElementById('expCategory').value = exp.envelopeId;
+  const bill = findRecurring(exp.recurringId); // calendar.js
+  setExpenseRepeat(Boolean(bill), bill ? bill.day : new Date(exp.date).getDate());
   openAddDialog('expense', 'Edit expense');
 }
 
