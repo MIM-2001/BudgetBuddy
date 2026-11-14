@@ -2,6 +2,7 @@
    DERIVED CALCULATIONS
    ========================================================================= */
 function monthlyValueOf(income) {
+  if (income.freq === 'once') return countsThisMonth(income) ? income.amount : 0;
   if (income.freq === 'monthly') return income.amount;
   if (income.freq === 'biweekly') return income.amount * 26 / 12;
   if (income.freq === 'weekly') return income.amount * 52 / 12;
@@ -15,6 +16,12 @@ function totalMonthlyIncome() {
 
 function monthKey(date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
+// A one-time payment (selling something, a gift) counts only in the month
+// it arrived, like expenses; every other income counts each month.
+function countsThisMonth(income) {
+  return income.freq !== 'once' || monthKey(new Date(income.date)) === monthKey(new Date());
 }
 
 // Budgets reset each calendar month: every total counts only this month's
@@ -213,24 +220,27 @@ function render() {
     formatValue: money,
   });
 
-  // Income list
+  // Income list (one-time payments from earlier months drop off)
+  const incomeNow = state.income.filter(countsThisMonth);
   const incList = document.getElementById('incomeList');
   incList.innerHTML = '';
-  document.getElementById('incomeEmpty').style.display = state.income.length ? 'none' : 'block';
-  if (state.income.length) {
-    const n = state.income.length;
+  document.getElementById('incomeEmpty').style.display = incomeNow.length ? 'none' : 'block';
+  if (incomeNow.length) {
+    const n = incomeNow.length;
     incList.appendChild(foldHead('income', `${n} ${n === 1 ? 'source' : 'sources'}`, '', `${money(monthlyIncome)}/mo`));
   }
-  if (openFolds.has('income')) state.income.forEach(inc => {
+  if (openFolds.has('income')) incomeNow.forEach(inc => {
     const row = document.createElement('div');
     row.className = 'row';
     row.dataset.editIncome = inc.id;
     const freqLabel = { monthly: 'monthly', biweekly: 'every 2 weeks', weekly: 'every week' };
-    const meta = inc.freq === 'lump'
-      ? `spread over ${inc.spread} mo · ${money(monthlyValueOf(inc))}/mo`
-      : inc.freq === 'monthly'
-        ? 'monthly'
-        : `${freqLabel[inc.freq]} · ${money(monthlyValueOf(inc))}/mo`;
+    const meta = inc.freq === 'once'
+      ? `one time · ${new Date(inc.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`
+      : inc.freq === 'lump'
+        ? `spread over ${inc.spread} mo · ${money(monthlyValueOf(inc))}/mo`
+        : inc.freq === 'monthly'
+          ? 'monthly'
+          : `${freqLabel[inc.freq]} · ${money(monthlyValueOf(inc))}/mo`;
     row.innerHTML = `
       <span class="row-tag ${inc.type}">${tagLabel[inc.type]}</span>
       <span class="row-name">${inc.name}<div class="row-meta">${meta}</div></span>
@@ -413,6 +423,12 @@ function saveIncome() {
     freq: document.getElementById('incFreq').value,
     spread: document.getElementById('incSpread').value,
   };
+  // One time counts in the month it arrived: today, or when it was first
+  // saved as one time if this is an edit of one
+  if (item.freq === 'once') {
+    const old = Store.getState().income.find(i => i.id === editingIncomeId);
+    item.date = old && old.freq === 'once' && old.date ? old.date : new Date().toISOString();
+  }
   if (editingIncomeId) {
     Store.updateIncome(editingIncomeId, item);
   } else {
