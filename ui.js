@@ -1,6 +1,8 @@
 /* =========================================================================
    DERIVED CALCULATIONS
    ========================================================================= */
+
+//convert income into monthly value
 function monthlyValueOf(income) {
   if (income.freq === 'once') return countsThisMonth(income) ? income.amount : 0;
   if (income.freq === 'monthly') return income.amount;
@@ -10,10 +12,15 @@ function monthlyValueOf(income) {
   return income.amount / months;
 }
 
+//get user income data from store.js (store.getState().income)
+//reduce(Accumulator, current value) then feed them into functions on right
+//starting at 0 count every income and put it into sum, return sum
 function totalMonthlyIncome() {
   return Store.getState().income.reduce((sum, i) => sum + monthlyValueOf(i), 0);
 }
 
+//convert data object into YYYY-MM
+//year + "-" + month + 1 leading zero to month if not 2 digits long.
 function monthKey(date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
 }
@@ -31,26 +38,31 @@ function expensesThisMonth() {
   return Store.getState().expenses.filter(x => monthKey(new Date(x.date)) === current);
 }
 
+//calculate total amount spend in certain budget category this month
 function spentInEnvelope(envId) {
   return expensesThisMonth()
     .filter(x => x.envelopeId === envId)
     .reduce((sum, x) => sum + x.amount, 0);
 }
 
+//return total expenses spent this month
 function totalSpent() {
   return expensesThisMonth().reduce((sum, x) => sum + x.amount, 0);
 }
 
+//return days left in month including current day
 function daysLeftInMonth() {
   const now = new Date();
   const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
   return Math.max(1, end.getDate() - now.getDate() + 1);
 }
 
+//return total days of date passed in
 function daysInMonth(date) {
   return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
 }
 
+//return current date
 function startOfToday() {
   const now = new Date();
   return new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -62,16 +74,22 @@ function moneyLeftThisMonth() {
   return totalMonthlyIncome() - totalSpent() - totalUnpaidBills();
 }
 
+//milliseconds in day
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-// Total spent in one category between two dates (both included)
+// Total spent in one budget category between two dates (both included)
+//.filter 1 gets rid of budget categories that do not fit
+//.filter 2 gets rid of dates outside of range
+//.reduce loops and counts all expenses together to return sum
 function spentBetween(envelopeId, from, to) {
   return Store.getState().expenses
     .filter(x => x.envelopeId === envelopeId)
     .filter(x => new Date(x.date) >= from && new Date(x.date) <= to)
     .reduce((sum, x) => sum + x.amount, 0);
 }
-
+//converts n to money value.
+//checks if negative or positive
+//rounds up to whole number
 function money(n) {
   const sign = n < 0 ? '-' : '';
   return sign + '$' + Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
@@ -82,6 +100,7 @@ function money(n) {
    ========================================================================= */
 const INCOME_TYPE_COLOR_INDEX = { aid: 0, loan: 1, family: 2, job: 3 };
 
+//return budget category
 function envelopeById(envelopeId) {
   return Store.getState().envelopes.find(e => e.id === envelopeId);
 }
@@ -92,6 +111,9 @@ function envelopeColor(envelopeId) {
   return env ? paletteColor(env.colorIndex) : CHART_OTHER_COLOR;
 }
 
+//stores every budget category with its color into segments variable
+//overflow budgets are put into other category 
+//segments are then returned (to be drawn)
 function spendingByCategorySegments() {
   const state = Store.getState();
   const segments = [];
@@ -108,6 +130,8 @@ function spendingByCategorySegments() {
   return segments;
 }
 
+//totals -> total per budget category
+//build chart and return label, value, color for each type of budget category
 function incomeByTypeSegments() {
   const state = Store.getState();
   const totals = {};
